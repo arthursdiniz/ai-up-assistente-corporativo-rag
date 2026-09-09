@@ -1,0 +1,66 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.permissions import require_roles
+from app.core.security import hash_password
+from app.db.session import get_db
+from app.models.user import User, UserRole
+from app.repositories.user_repository import UserRepository
+from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.services.audit_service import AuditService
+
+
+router = APIRouter(prefix="/users", tags=["Usuários"])
+repository = UserRepository()
+audit_service = AuditService()
+admin_only = require_roles(UserRole.IT_ADMIN)
+
+
+@router.get("", response_model=list[UserRead])
+def list_users(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> list[User]:
+    return repository.list(db)
+
+
+@router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+def create_user(
+    payload: UserCreate,
+    current_user: User = Depends(admin_only),
+    db: Session = Depends(get_db),
+) -> User:
+    email = str(payload.email).lower()
+    if repository.get_by_email(db, email):
+        raise HTTPException(status_code=409, detail="Já existe um usuário com este e-mail.")
+    user = User(
+        name=payload.name.strip(),
+        email=email,
+        role=payload.role,
+        password_hash=hash_password(payload.password),
+    )
+    db.add(user)
+    db.flush()
+    audit_service.record(db, "CREATE_USER", current_user.id, "user", str(user.id))
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.patch("/{user_id}", response_model=UserRead)
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    current_user: User = Depends(admin_only),
+    db: Session = Depends(get_db),
+) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    if user.id == current_user.id and payload.active is False:
+        raise HTTPException(status_code=409, detail="Você não pode desativar seu próprio usuário.")
+    changes = payload.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(user, field, value.strip() if field == "name" else value)
+    action = "DISABLE_USER" if payload.active is False else "UPDATE_USER"
+    audit_service.record(db, action, current_user.id, "user", str(user.id), details={"fields": list(changes)})
+    db.commit()
+    db.refresh(user)
+    return user

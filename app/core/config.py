@@ -1,0 +1,98 @@
+from functools import lru_cache
+import os
+from pathlib import Path
+from typing import Literal
+
+from pydantic import Field, SecretStr, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+class Settings(BaseSettings):
+    app_name: str = "AI-Up"
+    app_env: str = "development"
+    debug: bool = False
+
+    database_url: str = Field(
+        default="postgresql+psycopg://postgres:postgres@localhost:5432/ai_up",
+        repr=False,
+    )
+    database_username: str | None = None
+    database_password: SecretStr | None = Field(default=None, repr=False)
+    database_host: str = "localhost"
+    database_port: int = 5432
+    database_name: str = "ai_up"
+    secret_key: str = "change-me"
+    access_token_expire_minutes: int = 480
+
+    upload_dir: Path = Path("./data/uploads")
+    chroma_dir: Path = Path("./data/chroma")
+    max_upload_size_mb: int = 20
+
+    chunk_size: int = 1200
+    chunk_overlap: int = 200
+    rag_top_k: int = 5
+    rag_min_relevance: float = Field(default=0.25, ge=0.0, le=1.0)
+    rag_broad_top_k: int = Field(default=8, ge=3, le=20)
+    rag_broad_min_relevance: float = Field(default=0.18, ge=0.0, le=1.0)
+    rag_candidate_pool: int = Field(default=20, ge=5, le=100)
+    rag_semantic_weight: float = Field(default=0.65, ge=0.0, le=1.0)
+    rag_semantic_only_min_relevance: float = Field(default=0.50, ge=0.0, le=1.0)
+    rag_lexical_scan_limit: int = Field(default=5000, ge=100, le=50000)
+    conversation_history_messages: int = Field(default=6, ge=0, le=20)
+    conversation_history_char_limit: int = Field(default=6000, ge=500, le=20000)
+
+    llm_provider: Literal["mock", "ollama"] = "mock"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen3:4b-instruct"
+
+    embedding_provider: Literal["sentence_transformers", "hash"] = "sentence_transformers"
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    tesseract_cmd: str | None = None
+
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    @model_validator(mode="after")
+    def validate_settings(self) -> "Settings":
+        if self.chunk_overlap >= self.chunk_size:
+            raise ValueError("CHUNK_OVERLAP deve ser menor que CHUNK_SIZE.")
+        if self.rag_candidate_pool < self.rag_top_k:
+            raise ValueError("RAG_CANDIDATE_POOL deve ser maior ou igual a RAG_TOP_K.")
+
+        # A DATABASE_URL definida diretamente no processo tem precedência. Quando
+        # ela não existe, as credenciais separadas do Windows substituem a URL de
+        # exemplo presente no .env sem exigir que a senha seja gravada em arquivo.
+        if not os.environ.get("DATABASE_URL") and self.database_username and self.database_password:
+            self.database_url = URL.create(
+                drivername="postgresql+psycopg",
+                username=self.database_username,
+                password=self.database_password.get_secret_value(),
+                host=self.database_host,
+                port=self.database_port,
+                database=self.database_name,
+            ).render_as_string(hide_password=False)
+        return self
+
+    def resolve_path(self, value: Path) -> Path:
+        return value if value.is_absolute() else (PROJECT_ROOT / value).resolve()
+
+    @property
+    def resolved_upload_dir(self) -> Path:
+        return self.resolve_path(self.upload_dir)
+
+    @property
+    def resolved_chroma_dir(self) -> Path:
+        return self.resolve_path(self.chroma_dir)
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

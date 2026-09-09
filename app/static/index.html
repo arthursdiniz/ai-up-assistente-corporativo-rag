@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Conversas — AI-Up</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/css/app.css?v=7">
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="wordmark" href="/">AI<span>↑</span>UP</a>
+        <button id="new-chat" class="button primary full">+ Nova conversa</button>
+        <nav class="nav-links" aria-label="Navegação principal"><a class="active" href="/">Conversas</a><a href="/documents.html">Documentos</a><a id="admin-link" class="hidden" href="/admin.html">Administração</a></nav>
+        <div class="sidebar-section"><p class="section-label">SUAS CONVERSAS</p><div id="chat-list" class="chat-list"></div></div>
+        <div class="user-card"><div class="avatar" id="user-initial">A</div><div><strong id="user-name">Carregando…</strong><small id="user-role"></small></div><button id="logout" class="icon-button" title="Sair" aria-label="Sair">↗</button></div>
+      </aside>
+      <main class="workspace">
+        <header class="workspace-header"><div><p class="section-label">CONVERSA ATUAL</p><h1 id="chat-title">Selecione uma conversa</h1></div><div class="header-actions"><button id="rename-chat" class="icon-button" title="Renomear" aria-label="Renomear conversa">✎</button><button id="delete-chat" class="icon-button danger" title="Excluir" aria-label="Excluir conversa">⌫</button></div></header>
+        <section id="messages" class="messages" aria-live="polite" aria-label="Histórico da conversa" tabindex="0"><div class="empty-state"><div class="brand-mark">A↑</div><h2>Faça uma pergunta aos seus documentos.</h2><p>Crie uma conversa e envie documentos para começar.</p></div></section>
+        <form id="message-form" class="composer"><label class="sr-only" for="message-input">Faça uma pergunta</label><textarea id="message-input" rows="1" maxlength="4000" placeholder="Pergunte algo sobre seus documentos…" required></textarea><button class="send-button" type="submit" title="Enviar" aria-label="Enviar pergunta">↑</button><small id="composer-hint">O AI-Up responde somente com base nos trechos recuperados.</small></form>
+      </main>
+    </div>
+    <dialog id="rename-dialog" class="app-dialog" aria-labelledby="rename-dialog-title">
+      <form id="rename-form">
+        <p class="section-label">ORGANIZAR CONVERSA</p>
+        <h2 id="rename-dialog-title">Renomear conversa</h2>
+        <label for="rename-input">Nome da conversa</label>
+        <input id="rename-input" maxlength="160" required>
+        <div class="dialog-actions"><button id="cancel-rename" class="button secondary" type="button">Cancelar</button><button class="button primary" type="submit">Salvar</button></div>
+      </form>
+    </dialog>
+    <dialog id="delete-dialog" class="app-dialog" aria-labelledby="delete-dialog-title">
+      <div>
+        <p class="section-label">CONFIRMAR EXCLUSÃO</p>
+        <h2 id="delete-dialog-title">Excluir esta conversa?</h2>
+        <p>Todo o histórico desta conversa será removido. Os documentos continuarão disponíveis.</p>
+        <div class="dialog-actions"><button id="cancel-delete" class="button secondary" type="button">Cancelar</button><button id="confirm-delete" class="button danger-button" type="button">Excluir conversa</button></div>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status"></div><script src="/js/api.js?v=3"></script><script src="/js/chat.js?v=7"></script>
+  </body>
+</html>

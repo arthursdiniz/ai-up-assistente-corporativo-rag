@@ -1,0 +1,287 @@
+# AI-Up
+
+O AI-Up é um assistente corporativo local que responde perguntas usando exclusivamente os documentos enviados pelo usuário. O fluxo principal é gratuito, privado e executado na própria máquina com arquitetura RAG (*Retrieval-Augmented Generation*).
+
+```text
+Upload → extração/OCR → chunks → embeddings → ChromaDB
+Pergunta + histórico → análise → busca híbrida → reranking → Ollama → resposta + evidências
+```
+
+## Estado do projeto
+
+O MVP contém:
+
+- API FastAPI com Swagger e ReDoc;
+- PostgreSQL via SQLAlchemy 2 e migration Alembic reproduzível;
+- autenticação JWT, senhas Argon2 e RBAC (`USER`, `MANAGER`, `IT_ADMIN`);
+- conversas, histórico e isolamento por proprietário;
+- upload validado de PDF, TXT, DOCX, XLSX, PNG, JPG e JPEG;
+- extração local, OCR com Tesseract e página de origem para PDFs;
+- chunking configurável, Sentence Transformers e ChromaDB persistente;
+- memória contextual seletiva, com mudança de assunto sem contaminar a nova pergunta;
+- RAG híbrido com embeddings + BM25, deduplicação, reranking e política de suficiência;
+- respostas orientadas por tarefa e fontes com documento, página/planilha e excerto;
+- provedores `mock` e `ollama` desacoplados;
+- auditoria, estatísticas e gerenciamento de usuários;
+- interface web em português com sugestões, progresso, copiar, tentar novamente e feedback;
+- testes sem API externa nem modelo pago.
+
+## Requisitos no Windows
+
+- [Git](https://git-scm.com/download/win)
+- Python 3.12 ou superior
+- [PostgreSQL](https://www.postgresql.org/download/windows/)
+- [Ollama](https://ollama.com/download/windows)
+- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) com o idioma português instalado
+
+O Ollama e o Tesseract só são obrigatórios para geração real e OCR. O modo `mock` e documentos digitais TXT/PDF/DOCX/XLSX funcionam sem eles.
+
+## Instalação
+
+No PowerShell, na raiz do projeto:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+copy .env.example .env
+```
+
+Troque `SECRET_KEY` no `.env` por uma chave aleatória local com pelo menos 32 bytes. O arquivo `.env` já está ignorado pelo Git.
+
+## PostgreSQL
+
+Crie o banco `ai_up` usando pgAdmin ou `psql`:
+
+```sql
+CREATE DATABASE ai_up;
+```
+
+Confirme no `.env` que usuário, senha, host e porta correspondem à instalação:
+
+```env
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/ai_up
+```
+
+No Windows, a opção recomendada é guardar a credencial fora do arquivo. O AI-Up aceita as variáveis de usuário `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT` e `DATABASE_NAME`. Quando usuário e senha estão presentes, elas substituem a URL de exemplo do `.env` e caracteres especiais são codificados automaticamente.
+
+Crie as tabelas exclusivamente pela migration e depois gere os usuários locais:
+
+```powershell
+alembic upgrade head
+python scripts/seed.py
+```
+
+Usuários de demonstração:
+
+| E-mail | Função |
+|---|---|
+| `usuario@aiup.local` | USER |
+| `gerente@aiup.local` | MANAGER |
+| `admin@aiup.local` | IT_ADMIN |
+
+A senha inicial é `AiUp@2026`, somente para desenvolvimento. Para usar outra senha durante o seed:
+
+```powershell
+$env:SEED_PASSWORD="uma-senha-local-forte"
+python scripts/seed.py
+Remove-Item Env:SEED_PASSWORD
+```
+
+## Embeddings locais
+
+O padrão é `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, modelo multilíngue Apache 2.0. No primeiro uso ele é baixado; depois fica no cache local e pode funcionar sem internet.
+
+```env
+EMBEDDING_PROVIDER=sentence_transformers
+EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+```
+
+`EMBEDDING_PROVIDER=hash` existe apenas para testes leves. Não o use na demonstração semântica do TCC.
+
+## Ollama
+
+1. Instale o Ollama.
+2. Baixe um modelo local pequeno e multilíngue:
+
+   ```powershell
+   ollama pull qwen3:4b-instruct
+   ```
+
+3. Verifique o serviço:
+
+   ```powershell
+   ollama list
+   ```
+
+4. Configure o `.env`:
+
+   ```env
+   LLM_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://localhost:11434
+   OLLAMA_MODEL=qwen3:4b-instruct
+   ```
+
+O `qwen3:4b-instruct` ocupa aproximadamente 2,5 GB na quantização padrão e é adequado para uma primeira demonstração em português. É possível trocar o modelo sem alterar código. O projeto usa somente a API local do Ollama; não configure modelos com sufixo `-cloud`.
+
+Para desenvolver sem carregar um LLM:
+
+```env
+LLM_PROVIDER=mock
+```
+
+Nesse modo, a busca no ChromaDB continua real; apenas a redação final é previsível.
+
+## Tesseract no Windows
+
+Instale o Tesseract com o pacote de idioma português. Se o executável não estiver no `PATH`, configure:
+
+```env
+TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+```
+
+Quando um PDF tiver menos de 40 caracteres extraíveis em uma página, o AI-Up renderiza a página e tenta OCR. Imagens sempre passam pelo OCR.
+
+## Executar
+
+### Inicialização recomendada no Windows
+
+O script abaixo importa as variáveis do usuário, verifica PostgreSQL, Ollama e o modelo local, aplica migrations, prepara os usuários e inicia a aplicação:
+
+```powershell
+.\scripts\start_ai_up.ps1
+```
+
+Se `SECRET_KEY` não estiver definida no Windows, o inicializador cria uma chave criptograficamente segura apenas para a execução atual. Nesse caso, usuários devem fazer login novamente depois de reiniciar a aplicação.
+
+### Inicialização manual
+
+```powershell
+.venv\Scripts\activate
+uvicorn app.main:app --reload
+```
+
+Abra:
+
+- Aplicação: <http://localhost:8000>
+- Swagger: <http://localhost:8000/docs>
+- ReDoc: <http://localhost:8000/redoc>
+- Saúde: <http://localhost:8000/api/health>
+
+O health check retorna `degraded` quando a API está ativa, mas o PostgreSQL não está acessível.
+
+## Testes
+
+```powershell
+pytest
+```
+
+Os testes usam SQLite apenas como banco efêmero, embeddings determinísticos e `MockLLM`. A aplicação normal continua configurada para PostgreSQL, Sentence Transformers e Ollama.
+
+Para comparar a busca vetorial anterior com o pipeline híbrido atual:
+
+```powershell
+.venv\Scripts\python.exe scripts\evaluate_ai.py --embedding-provider sentence_transformers
+```
+
+O relatório reproduzível fica em `output/evaluation/latest.json`. A metodologia, os resultados e suas limitações estão em `docs/AVALIACAO_IA.md`.
+
+## Demonstração para a banca
+
+O arquivo `output/pdf/regulamento_empresa_demo.pdf` contém um regulamento fictício de três páginas preparado para validar recuperação semântica e indicação de fontes. O passo a passo e as perguntas esperadas estão em `docs/ROTEIRO_APRESENTACAO.md`.
+
+## Configurações principais
+
+| Variável | Finalidade | Padrão sugerido |
+|---|---|---|
+| `MAX_UPLOAD_SIZE_MB` | Limite por arquivo | `20` |
+| `CHUNK_SIZE` | Tamanho aproximado do trecho | `1200` |
+| `CHUNK_OVERLAP` | Sobreposição entre trechos | `200` |
+| `RAG_TOP_K` | Máximo de trechos recuperados | `5` |
+| `RAG_MIN_RELEVANCE` | Limiar para aceitar contexto | `0.25` |
+| `RAG_BROAD_TOP_K` | Contextos usados em resumos, comparações e linhas do tempo | `8` |
+| `RAG_CANDIDATE_POOL` | Candidatos antes do reranking | `20` |
+| `RAG_SEMANTIC_WEIGHT` | Peso semântico na fusão híbrida | `0.65` |
+| `RAG_SEMANTIC_ONLY_MIN_RELEVANCE` | Similaridade exigida sem apoio lexical | `0.50` |
+| `RAG_LEXICAL_SCAN_LIMIT` | Máximo de chunks do usuário na busca BM25 local | `5000` |
+| `CONVERSATION_HISTORY_MESSAGES` | Mensagens recentes usadas para continuidade | `6` |
+| `CONVERSATION_HISTORY_CHAR_LIMIT` | Limite de caracteres do histórico enviado ao modelo | `6000` |
+| `UPLOAD_DIR` | Arquivos originais | `./data/uploads` |
+| `CHROMA_DIR` | Índice vetorial persistente | `./data/chroma` |
+
+## Persistência e privacidade
+
+- PostgreSQL guarda usuários, chats, mensagens, documentos, fontes e auditoria.
+- ChromaDB persiste embeddings em `data/chroma/`.
+- Arquivos ficam em `data/uploads/` com nome interno UUID.
+- A busca sempre filtra `user_id`; funções administrativas não recebem acesso automático ao conteúdo privado.
+- Nenhum documento, embedding ou prompt é enviado para APIs comerciais.
+
+Ao apagar um documento, o arquivo local e seus vetores também são removidos. Ao apagar uma conversa, suas mensagens e relações de fontes são excluídas em cascata.
+
+## Segurança
+
+- senhas com Argon2;
+- JWT assinado e expiração configurável;
+- autorização no backend;
+- validação de conteúdo real e extensão do upload;
+- limite lido antes de persistir o arquivo;
+- nomes internos UUID e proteção contra *path traversal*;
+- consultas parametrizadas pelo ORM;
+- ausência de segredos nos logs.
+
+O logout JWT desta versão é client-side: o evento é auditado e o navegador remove o token. Não existe lista de revogação, evitando Redis e complexidade desnecessária nesta fase local.
+
+## Custo do projeto e licenças
+
+| Componente | Uso local | Licença/observação |
+|---|---|---|
+| Python, FastAPI, SQLAlchemy, Alembic | Gratuito | Open source |
+| PostgreSQL | Gratuito | PostgreSQL License |
+| ChromaDB | Gratuito e local | Apache 2.0 |
+| Sentence Transformers | Gratuito e local | Apache 2.0; cada modelo também deve ser conferido |
+| Modelo MiniLM configurado | Gratuito e local | Apache 2.0 |
+| Ollama local | Gratuito | O modelo escolhido possui licença própria |
+| Qwen3 4B Instruct | Gratuito e local | Apache 2.0 |
+| Tesseract | Gratuito e local | Apache 2.0 |
+| python-docx, openpyxl, Pillow | Gratuito | Open source |
+| PyMuPDF | Gratuito sob AGPL-3.0 | Também oferece licença comercial |
+| HTML, CSS e JavaScript | Gratuito | Tecnologias web abertas |
+
+### Atenção à licença do PyMuPDF
+
+O PyMuPDF é distribuído sob AGPL-3.0 ou licença comercial. Para uso acadêmico local, a opção AGPL pode ser adequada. Antes de publicar ou distribuir o AI-Up, confirme com a instituição se o trabalho será licenciado de forma compatível; caso contrário, substitua o adaptador de PDF por uma alternativa permissiva. A extração está isolada em `ExtractionService` para tornar essa troca simples.
+
+## Estrutura
+
+```text
+app/
+├── api/           # rotas e dependências HTTP
+├── core/          # configuração, JWT e permissões
+├── db/            # Base e sessões SQLAlchemy
+├── models/        # entidades relacionais
+├── repositories/  # consultas orientadas a domínio
+├── schemas/       # contratos Pydantic
+├── services/      # extração, RAG, embeddings, Chroma e auditoria
+│   └── llm/       # mock e Ollama
+└── static/        # interface web
+migrations/        # evolução reproduzível do PostgreSQL
+scripts/seed.py    # usuários de desenvolvimento
+scripts/evaluate_ai.py # avaliação reproduzível da recuperação
+evals/             # corpus e casos de regressão da IA
+docs/              # arquitetura, diagnóstico, avaliação e roteiro da banca
+tests/             # testes locais e sem custo
+data/              # uploads e vetores persistentes (não versionados)
+```
+
+## Limitações conscientes do MVP
+
+- processamento de upload é síncrono; o status é persistido, mas a requisição aguarda a indexação;
+- a busca BM25 local examina até `RAG_LEXICAL_SCAN_LIMIT` chunks por usuário e deve migrar para um índice dedicado em bases muito grandes;
+- logout não revoga tokens já emitidos;
+- não há compartilhamento de documentos entre usuários;
+- não há Docker, cloud, filas, Redis ou microsserviços;
+- qualidade e velocidade do texto gerado dependem do modelo local e do hardware.
+- os treze casos de avaliação são sintéticos e devem ser ampliados com documentos reais e revisão humana antes de uso em produção.
+
+Essas escolhas mantêm o sistema simples, gratuito, defensável no TCC e pronto para evolução posterior.

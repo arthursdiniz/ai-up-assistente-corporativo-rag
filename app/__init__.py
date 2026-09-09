@@ -1,0 +1,1 @@
+"""AI-Up application package."""
