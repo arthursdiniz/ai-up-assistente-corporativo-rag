@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.document import DocumentStatus
+from app.models.document import DocumentStatus, DocumentVisibility
 
 
 class DocumentRead(BaseModel):
@@ -24,11 +24,17 @@ class DocumentRead(BaseModel):
     chunk_count: int = 0
     warnings: list[str] = Field(default_factory=list)
     needs_reindex: bool = False
+    visibility: DocumentVisibility = DocumentVisibility.PRIVATE
+    team_id: int | None = None
+    owner_id: int
+    is_owner: bool = True
 
 
 class DocumentUpdate(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=80)
     archived: bool | None = None
+    visibility: DocumentVisibility | None = None
+    team_id: int | None = None
 
 
 class DocumentSuggestions(BaseModel):

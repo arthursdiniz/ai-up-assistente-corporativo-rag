@@ -48,3 +48,5 @@ class UserRead(UserBase):
     active: bool
     created_at: datetime
     updated_at: datetime
+    organization_id: int
+    team_ids: list[int] = Field(default_factory=list)

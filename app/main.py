@@ -14,6 +14,7 @@ from app.api.chats import router as chats_router
 from app.api.documents import router as documents_router
 from app.api.health import router as health_router
 from app.api.users import router as users_router
+from app.api.organizations import router as organizations_router
 from app.core.config import get_settings
 from app.core.cors import configure_cors
 from app.core.errors import error_payload, http_error_handler, validation_error_handler
@@ -100,5 +101,6 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(chats_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(organizations_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

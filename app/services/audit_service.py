@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.audit_log import AuditLog
+from app.models.user import User
 
 
 class AuditService:
@@ -21,9 +22,14 @@ class AuditService:
         resource_id: str | None = None,
         details: dict[str, Any] | None = None,
         ip_address: str | None = None,
+        organization_id: int | None = None,
     ) -> AuditLog:
+        if organization_id is None and user_id is not None:
+            user = db.get(User, user_id)
+            organization_id = user.organization_id if user else None
         log = AuditLog(
             user_id=user_id,
+            organization_id=organization_id,
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,
@@ -34,11 +40,16 @@ class AuditService:
         return log
 
     def record_login_failure(
-        self, db: Session, email: str, ip_address: str | None
+        self,
+        db: Session,
+        email: str,
+        ip_address: str | None,
+        organization_id: int | None = None,
     ) -> AuditLog:
         return self.record(
             db,
             "LOGIN_FAILED",
             details={"identifier_fingerprint": self.identifier_fingerprint(email)},
             ip_address=ip_address,
+            organization_id=organization_id,
         )

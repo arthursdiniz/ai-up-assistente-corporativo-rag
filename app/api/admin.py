@@ -22,13 +22,18 @@ it_admin_only = require_roles(UserRole.IT_ADMIN)
 def list_logs(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    _: User = Depends(administrative),
+    current_user: User = Depends(administrative),
     db: Session = Depends(get_db),
 ) -> AuditLogPage:
-    total = db.scalar(select(func.count(AuditLog.id))) or 0
+    total = db.scalar(
+        select(func.count(AuditLog.id)).where(
+            AuditLog.organization_id == current_user.organization_id
+        )
+    ) or 0
     items = list(
         db.scalars(
             select(AuditLog)
+            .where(AuditLog.organization_id == current_user.organization_id)
             .order_by(AuditLog.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -38,21 +43,40 @@ def list_logs(
 
 
 @router.get("/stats", response_model=AdminStats)
-def stats(_: User = Depends(administrative), db: Session = Depends(get_db)) -> AdminStats:
-    count = lambda model_id: db.scalar(select(func.count(model_id))) or 0
+def stats(current_user: User = Depends(administrative), db: Session = Depends(get_db)) -> AdminStats:
+    organization_id = current_user.organization_id
     return AdminStats(
-        users=count(User.id),
-        documents=count(Document.id),
+        users=db.scalar(select(func.count(User.id)).where(User.organization_id == organization_id)) or 0,
+        documents=db.scalar(select(func.count(Document.id)).where(Document.organization_id == organization_id)) or 0,
         documents_ready=db.scalar(
-            select(func.count(Document.id)).where(Document.status == DocumentStatus.READY)
+            select(func.count(Document.id)).where(
+                Document.organization_id == organization_id,
+                Document.status == DocumentStatus.READY,
+            )
         ) or 0,
         documents_error=db.scalar(
-            select(func.count(Document.id)).where(Document.status == DocumentStatus.ERROR)
+            select(func.count(Document.id)).where(
+                Document.organization_id == organization_id,
+                Document.status == DocumentStatus.ERROR,
+            )
         ) or 0,
-        chats=count(Chat.id),
-        messages=count(Message.id),
+        chats=db.scalar(
+            select(func.count(Chat.id)).join(User).where(User.organization_id == organization_id)
+        ) or 0,
+        messages=db.scalar(
+            select(func.count(Message.id))
+            .join(Chat)
+            .join(User)
+            .where(User.organization_id == organization_id)
+        ) or 0,
         ai_questions=db.scalar(
-            select(func.count(Message.id)).where(Message.role == MessageRole.USER)
+            select(func.count(Message.id))
+            .join(Chat)
+            .join(User)
+            .where(
+                User.organization_id == organization_id,
+                Message.role == MessageRole.USER,
+            )
         ) or 0,
     )
 
@@ -72,8 +96,18 @@ def technical_info(_: User = Depends(it_admin_only)) -> TechnicalInfo:
 
 
 @router.get("/quality")
-def quality(_: User = Depends(administrative), db: Session = Depends(get_db)):
-    messages = list(db.scalars(select(Message).where(Message.role == MessageRole.ASSISTANT).order_by(Message.id.desc()).limit(500)))
+def quality(current_user: User = Depends(administrative), db: Session = Depends(get_db)):
+    messages = list(db.scalars(
+        select(Message)
+        .join(Chat)
+        .join(User)
+        .where(
+            User.organization_id == current_user.organization_id,
+            Message.role == MessageRole.ASSISTANT,
+        )
+        .order_by(Message.id.desc())
+        .limit(500)
+    ))
     timed = [item.metrics["total_ms"] for item in messages if item.metrics and "total_ms" in item.metrics]
     return {"sample_size":len(messages), "positive":sum(item.feedback == 1 for item in messages),
         "negative":sum(item.feedback == -1 for item in messages),

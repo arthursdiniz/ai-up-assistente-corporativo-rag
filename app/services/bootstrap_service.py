@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.core.security import hash_password
 from app.models.user import User, UserRole
+from app.models.organization import Organization
 from app.services.audit_service import AuditService
 from app.services.session_service import SessionService
 
@@ -88,11 +89,19 @@ class BootstrapService:
                     )
                 if not self.is_required(db):
                     raise BootstrapAlreadyCompleted
+                organization = db.scalar(
+                    select(Organization).order_by(Organization.id).limit(1)
+                )
+                if organization is None:
+                    organization = Organization(name="Minha organização")
+                    db.add(organization)
+                    db.flush()
                 user = User(
                     name=name,
                     email=email,
                     password_hash=hash_password(password),
                     role=UserRole.IT_ADMIN,
+                    organization_id=organization.id,
                 )
                 db.add(user)
                 db.flush()

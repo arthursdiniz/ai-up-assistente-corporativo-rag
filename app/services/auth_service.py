@@ -21,3 +21,7 @@ class AuthService:
         if not verify_password(password, user.password_hash) or not user.active:
             return None
         return user
+
+    def organization_id_for_email(self, db: Session, email: str) -> int | None:
+        user = self.users.get_by_email(db, email)
+        return user.organization_id if user else None

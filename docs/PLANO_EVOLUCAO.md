@@ -1,6 +1,6 @@
 # Evolução aprovada do AI-Up
 
-Escopo aprovado: confiabilidade, usabilidade e inteligência/demonstração. Base compartilhada entre equipes permanece fora deste ciclo.
+Escopo aprovado: confiabilidade, usabilidade, inteligência/demonstração e base de conhecimento compartilhada dentro de cada organização.
 
 ## Entregas e validação
 
@@ -14,8 +14,10 @@ Escopo aprovado: confiabilidade, usabilidade e inteligência/demonstração. Bas
 - [x] Exportação, tarefas práticas e feedback acionável.
 - [x] Diagnóstico local, testes PostgreSQL, avaliação ampliada e documentação.
 - [x] Migração, reindexação local e verificação no navegador.
+- [x] Organizações, equipes, membros e documentos privados/empresariais/por equipe.
+- [x] Isolamento de usuários, métricas, auditoria e recuperação RAG por organização.
 
 Mudanças na estrutura dos dados são precedidas de backup. Testes automatizados usam armazenamento isolado. As evidências de avaliação devem distinguir busca, qualidade de geração e avaliação humana; resultados sintéticos não representam precisão universal.
 
 
-Evidências e limites registrados em VERIFICACAO_EVOLUCAO.md. Implementação local concluída; não foi publicada uma atualização no GitHub nesta tarefa.
+Evidências e limites registrados em VERIFICACAO_EVOLUCAO.md. Cada etapa validada é publicada no repositório privado do projeto.

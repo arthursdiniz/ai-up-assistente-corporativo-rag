@@ -15,6 +15,7 @@ load_user_environment()
 from app.core.security import hash_password  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
 from app.models.user import User, UserRole  # noqa: E402
+from app.models.organization import Organization  # noqa: E402
 
 
 DEVELOPMENT_PASSWORD = os.getenv("SEED_PASSWORD", "AiUp@2026")
@@ -27,6 +28,11 @@ DEMO_USERS = (
 
 def seed(reset_demo: bool = False) -> None:
     with SessionLocal() as db:
+        organization = db.scalar(select(Organization).order_by(Organization.id).limit(1))
+        if organization is None:
+            organization = Organization(name="AI-Up Demonstração")
+            db.add(organization)
+            db.flush()
         for name, email, role in DEMO_USERS:
             user = db.scalar(select(User).where(User.email == email))
             if user is None:
@@ -35,6 +41,7 @@ def seed(reset_demo: bool = False) -> None:
                         name=name,
                         email=email,
                         role=role,
+                        organization_id=organization.id,
                         active=True,
                         password_hash=hash_password(DEVELOPMENT_PASSWORD),
                     )

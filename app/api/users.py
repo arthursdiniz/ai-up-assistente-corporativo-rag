@@ -21,8 +21,10 @@ admin_only = require_roles(UserRole.IT_ADMIN)
 
 
 @router.get("", response_model=list[UserRead])
-def list_users(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> list[User]:
-    return repository.list(db)
+def list_users(
+    current_user: User = Depends(admin_only), db: Session = Depends(get_db)
+) -> list[User]:
+    return repository.list(db, current_user.organization_id)
 
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -38,6 +40,7 @@ def create_user(
         name=payload.name.strip(),
         email=email,
         role=payload.role,
+        organization_id=current_user.organization_id,
         password_hash=hash_password(payload.password),
     )
     db.add(user)
@@ -55,13 +58,29 @@ def update_user(
     current_user: User = Depends(admin_only),
     db: Session = Depends(get_db),
 ) -> User:
-    user = db.get(User, user_id)
+    user = db.scalar(
+        select(User).where(
+            User.id == user_id,
+            User.organization_id == current_user.organization_id,
+        )
+    )
     if user is None:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     if user.id == current_user.id and payload.active is False:
         raise HTTPException(status_code=409, detail="Você não pode desativar seu próprio usuário.")
     if user.role == UserRole.IT_ADMIN and (payload.active is False or payload.role not in (None, UserRole.IT_ADMIN)):
-        administrators = list(db.scalars(select(User).where(User.role == UserRole.IT_ADMIN, User.active.is_(True)).order_by(User.id).with_for_update()))
+        administrators = list(
+            db.scalars(
+                select(User)
+                .where(
+                    User.organization_id == current_user.organization_id,
+                    User.role == UserRole.IT_ADMIN,
+                    User.active.is_(True),
+                )
+                .order_by(User.id)
+                .with_for_update()
+            )
+        )
         if len(administrators) <= 1 and user.active:
             raise HTTPException(409, "Mantenha pelo menos um administrador ativo.")
     previous_active = user.active

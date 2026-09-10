@@ -35,6 +35,7 @@ def enable_foreign_keys(connection, _):
         connection.execute("PRAGMA foreign_keys=ON")
 from app.main import app
 from app.models.user import User, UserRole
+from app.models.organization import Organization
 from app.services.vector_store_service import _collection
 
 
@@ -58,12 +59,15 @@ def clean_state() -> Generator[None, None, None]:
         if path.is_file():
             path.unlink()
     with SessionLocal() as db:
+        organization = Organization(name="Empresa de Teste")
+        db.add(organization)
+        db.flush()
         db.add_all(
             [
-                User(name="Usuário", email="usuario@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.USER),
-                User(name="Gerente", email="gerente@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.MANAGER),
-                User(name="Admin", email="admin@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.IT_ADMIN),
-                User(name="Outro", email="outro@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.USER),
+                User(name="Usuário", email="usuario@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.USER, organization_id=organization.id),
+                User(name="Gerente", email="gerente@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.MANAGER, organization_id=organization.id),
+                User(name="Admin", email="admin@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.IT_ADMIN, organization_id=organization.id),
+                User(name="Outro", email="outro@aiup.local", password_hash=PASSWORD_HASH, role=UserRole.USER, organization_id=organization.id),
             ]
         )
         db.commit()

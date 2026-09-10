@@ -14,7 +14,8 @@ O projeto local contém:
 - API FastAPI com Swagger e ReDoc;
 - PostgreSQL via SQLAlchemy 2 e migration Alembic reproduzível;
 - access token JWT curto, refresh token rotativo em cookie `HttpOnly`, senhas Argon2 e RBAC (`USER`, `MANAGER`, `IT_ADMIN`);
-- conversas, histórico e isolamento por proprietário;
+- conversas pessoais, histórico e isolamento por organização;
+- organizações e equipes com compartilhamento documental privado, empresarial ou por equipe;
 - upload validado de PDF, TXT, DOCX, XLSX, PNG, JPG e JPEG;
 - extração local, OCR com Tesseract e página de origem para PDFs;
 - chunking configurável, Sentence Transformers e ChromaDB persistente;
@@ -22,7 +23,7 @@ O projeto local contém:
 - RAG híbrido com embeddings + BM25, deduplicação, reranking e política de suficiência;
 - respostas orientadas por tarefa e fontes com documento, página/planilha e excerto;
 - provedores `mock` e `ollama` desacoplados;
-- auditoria, estatísticas e gerenciamento de usuários;
+- auditoria, estatísticas, usuários e equipes limitados à empresa autenticada;
 - interface web em português com sugestões, progresso, copiar, tentar novamente e feedback;
 - testes sem API externa nem modelo pago.
 
@@ -220,7 +221,8 @@ O arquivo `output/pdf/regulamento_empresa_demo.pdf` contém um regulamento fict�
 - PostgreSQL guarda usuários, chats, mensagens, documentos, fontes e auditoria.
 - ChromaDB persiste embeddings em `data/chroma/`.
 - Arquivos ficam em `data/uploads/` com nome interno UUID.
-- A busca sempre filtra `user_id`; funções administrativas não recebem acesso automático ao conteúdo privado.
+- A API valida no PostgreSQL se o usuário é dono do documento ou se recebeu acesso pela empresa/equipe antes de consultar seus IDs no ChromaDB.
+- Chats continuam pessoais; selecionar um documento compartilhado não transfere sua propriedade nem permite alterá-lo.
 - Nenhum documento, embedding ou prompt é enviado para APIs comerciais.
 
 Ao apagar um documento, o arquivo local e seus vetores também são removidos. Ao apagar uma conversa, suas mensagens e relações de fontes são excluídas em cascata.
@@ -233,6 +235,8 @@ Ao apagar um documento, o arquivo local e seus vetores também são removidos. A
 - access token mantido em `sessionStorage`, sem persistência entre sessões do navegador;
 - logout, troca de senha, alteração de função e bloqueio revogam sessões renováveis;
 - autorização no backend;
+- isolamento multiempresa em usuários, documentos, métricas e auditoria;
+- compartilhamento explícito (`PRIVATE`, `ORGANIZATION` ou `TEAM`) e mutações reservadas ao proprietário;
 - validação de conteúdo real e extensão do upload;
 - limite lido antes de persistir o arquivo;
 - nomes internos UUID e proteção contra *path traversal*;
@@ -304,7 +308,7 @@ data/              # uploads e vetores persistentes (não versionados)
 - processamento em segundo plano e jobs de geração são locais e monoprocesso; reinícios exigem nova tentativa dos trabalhos interrompidos;
 - a busca BM25 local examina até `RAG_LEXICAL_SCAN_LIMIT` chunks por usuário e deve migrar para um índice dedicado em bases muito grandes;
 - revogação de tokens é por conta; sair encerra todas as sessões dessa conta;
-- não há compartilhamento de documentos entre usuários;
+- equipes não possuem quotas, aprovação de compartilhamento nem trilha administrativa para download; esses controles são necessários antes de exposição pública;
 - não há Docker, cloud, filas, Redis ou microsserviços;
 - qualidade e velocidade do texto gerado dependem do modelo local e do hardware.
 - os 20 casos de recuperação e seis fixtures de geração são sintéticos e devem ser ampliados com documentos inéditos e revisão humana antes de uso em produção.
@@ -323,7 +327,8 @@ Essas escolhas mantêm o sistema simples, gratuito, defensável no TCC e pronto 
 - Troca de senha, revogação, limite de login, proteção do último administrador e seed não destrutivo.
 - Sessões renováveis com refresh token rotativo, cookie `HttpOnly` e revogação centralizada.
 - Diagnóstico, painel de qualidade, backup verificável e validação de migrations em PostgreSQL.
+- Empresas, equipes e bases de conhecimento compartilhadas com autorização aplicada também no pipeline RAG.
 
 Início habitual: .\scripts\start_ai_up.ps1 (abra o Ollama antes). Primeira instalação com contas demo: acrescente -Demo. A senha demo é somente inicial; contas existentes nunca são redefinidas automaticamente.
 
-Leia docs/OPERACAO.md para recuperação e limites, docs/AVALIACAO_IA.md para os resultados atuais e docs/ROTEIRO_APRESENTACAO.md para a demonstração. O sistema é local, monoprocesso e não oferece bases compartilhadas entre equipes.
+Leia docs/OPERACAO.md para recuperação e limites, docs/AVALIACAO_IA.md para os resultados atuais e docs/ROTEIRO_APRESENTACAO.md para a demonstração. O sistema continua local e monoprocesso; o compartilhamento entre equipes ocorre dentro da mesma organização.

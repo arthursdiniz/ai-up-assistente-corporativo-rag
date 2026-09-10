@@ -61,4 +61,8 @@ Máximo padrão: 20 MB por arquivo, 500 páginas PDF, 2 milhões de caracteres e
 
 Arquivar não apaga nada. Excluir remove arquivo e índice sem lixeira; só um backup anterior recupera o original. Trechos já citados e conversas permanecem. Exportações também podem conter informação sensível.
 
-Biblioteca e conversas são isoladas por proprietário. Não há base compartilhada de equipes, múltiplos servidores ou fila distribuída. A busca lexical examina no máximo RAG_LEXICAL_SCAN_LIMIT trechos; bases maiores exigem outro índice lexical e testes de escala. Não exponha este servidor diretamente à internet.
+Conversas permanecem isoladas por proprietário. Todo usuário pertence a uma organização e pode consultar documentos próprios, documentos liberados para toda a empresa e documentos liberados para suas equipes. Somente o proprietário pode alterar, reprocessar, arquivar ou excluir o documento compartilhado. Administradores de TI gerenciam o nome da empresa, equipes e integrantes; gestores veem métricas e auditoria somente da própria empresa.
+
+Ao migrar uma instalação anterior, a migration cria `AI-Up Local`, associa todos os registros existentes a ela e preserva os documentos como privados. Para compartilhar, o proprietário usa **Organizar** na biblioteca. A busca recebe apenas IDs previamente autorizados no PostgreSQL; os vetores continuam locais e os chats continuam pessoais.
+
+Não há múltiplos servidores ou fila distribuída. A busca lexical examina no máximo `RAG_LEXICAL_SCAN_LIMIT` trechos; bases maiores exigem outro índice lexical e testes de escala. Não exponha este servidor diretamente à internet.

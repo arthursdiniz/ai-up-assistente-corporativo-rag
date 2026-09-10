@@ -84,8 +84,10 @@ class VectorStoreService:
         return generation
 
     @staticmethod
-    def _where(user_id: int, document_ids=None, generations=None):
-        conditions = [{"user_id": user_id}]
+    def _where(user_id: int | None, document_ids=None, generations=None):
+        if user_id is None and document_ids is None:
+            raise ValueError("Informe o proprietário ou uma lista validada de documentos.")
+        conditions = [{"user_id": user_id}] if user_id is not None else []
         if document_ids is not None:
             conditions.append({"document_id": {"$in": document_ids or [-1]}})
         if generations:
@@ -95,9 +97,11 @@ class VectorStoreService:
                 alternatives.append({"document_id": {"$in": legacy}})
             if alternatives:
                 conditions.append(alternatives[0] if len(alternatives) == 1 else {"$or": alternatives})
+        if not conditions:
+            return {"document_id": {"$in": [-1]}}
         return conditions[0] if len(conditions) == 1 else {"$and": conditions}
 
-    def search(self, user_id: int, query_embedding: list[float], top_k: int, document_ids=None, generations=None) -> list[RetrievedChunk]:
+    def search(self, user_id: int | None, query_embedding: list[float], top_k: int, document_ids=None, generations=None) -> list[RetrievedChunk]:
         if self.collection.count() == 0:
             return []
         result = self.collection.query(
@@ -129,7 +133,7 @@ class VectorStoreService:
 
     def hybrid_search(
         self,
-        user_id: int,
+        user_id: int | None,
         query_embedding: list[float],
         query_text: str,
         top_k: int,
@@ -188,7 +192,7 @@ class VectorStoreService:
 
     def _lexical_search(
         self,
-        user_id: int,
+        user_id: int | None,
         query_text: str,
         top_k: int,
         scan_limit: int,

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.organization import Organization
     from app.models.user import User
 
 
@@ -16,6 +17,9 @@ class AuditLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    organization_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
     action: Mapped[str] = mapped_column(String(80), index=True, nullable=False)
     resource_type: Mapped[str | None] = mapped_column(String(80))
@@ -27,3 +31,4 @@ class AuditLog(Base):
     )
 
     user: Mapped["User | None"] = relationship(back_populates="audit_logs")
+    organization: Mapped["Organization | None"] = relationship(back_populates="audit_logs")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pathlib import Path
 from sqlalchemy import select
@@ -7,18 +7,22 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.permissions import get_current_user
 from app.db.session import get_db
-from app.models.document import Document, DocumentStatus
+from app.models.document import Document, DocumentStatus, DocumentVisibility
 from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
 from app.schemas.document import DocumentRead, DocumentSuggestions, DocumentUpdate
 from app.services.document_service import DocumentService, InvalidDocumentError, DuplicateDocumentError
+from app.services.document_access_service import DocumentAccessService, InvalidDocumentScope
+from app.services.audit_service import AuditService
 
 
 router = APIRouter(prefix="/documents", tags=["Documentos"])
 repository = DocumentRepository()
+access_service = DocumentAccessService()
+audit_service = AuditService()
 
 
-def serialize_document(document: Document) -> DocumentRead:
+def serialize_document(document: Document, viewer_id: int | None = None) -> DocumentRead:
     friendly_error = (
         document.error_message
         if document.error_message
@@ -36,6 +40,10 @@ def serialize_document(document: Document) -> DocumentRead:
         archived=document.archived, progress=document.progress, processing_stage=document.processing_stage,
         chunk_count=document.chunk_count, warnings=document.warnings or [],
         needs_reindex=document.index_version != DocumentService.index_version(get_settings()),
+        visibility=document.visibility,
+        team_id=document.team_id,
+        owner_id=document.user_id,
+        is_owner=viewer_id is None or document.user_id == viewer_id,
     )
 
 
@@ -44,6 +52,8 @@ def upload_document(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    visibility: DocumentVisibility = Form(default=DocumentVisibility.PRIVATE),
+    team_id: int | None = Form(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DocumentRead:
@@ -55,6 +65,9 @@ def upload_document(
     if not file.filename:
         raise HTTPException(status_code=400, detail="Nome de arquivo inválido.")
     try:
+        validated_team_id = access_service.validate_scope(
+            db, current_user, visibility, team_id
+        )
         document = DocumentService(settings).create_and_process(
             db,
             current_user,
@@ -62,14 +75,18 @@ def upload_document(
             content,
             request.client.host if request.client else None,
             process=not settings.background_processing,
+            visibility=visibility,
+            team_id=validated_team_id,
         )
     except DuplicateDocumentError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except InvalidDocumentError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except InvalidDocumentScope as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if settings.background_processing:
         background_tasks.add_task(DocumentService.process_in_background, document.id)
-    return serialize_document(document)
+    return serialize_document(document, current_user.id)
 
 
 @router.get("", response_model=list[DocumentRead])
@@ -80,7 +97,7 @@ def list_documents(
     category: str = Query(default="", max_length=80), document_status: DocumentStatus | None = None,
     archived: bool | None = None,
 ) -> list[DocumentRead]:
-    query = select(Document).where(Document.user_id == current_user.id)
+    query = select(Document).where(access_service.accessible_clause(current_user))
     if q.strip():
         query = query.where(Document.original_filename.icontains(q.strip(), autoescape=True))
     if category.strip():
@@ -89,7 +106,7 @@ def list_documents(
         query = query.where(Document.status == document_status)
     if archived is not None:
         query = query.where(Document.archived == archived)
-    return [serialize_document(item) for item in db.scalars(query.order_by(Document.created_at.desc(), Document.id.desc()).offset(offset).limit(limit))]
+    return [serialize_document(item, current_user.id) for item in db.scalars(query.order_by(Document.created_at.desc(), Document.id.desc()).offset(offset).limit(limit))]
 
 
 @router.get("/{document_id}", response_model=DocumentRead)
@@ -98,10 +115,10 @@ def get_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DocumentRead:
-    document = repository.get_owned(db, document_id, current_user.id)
+    document = repository.get_accessible(db, document_id, current_user)
     if document is None:
         raise HTTPException(status_code=404, detail="Documento não encontrado.")
-    return serialize_document(document)
+    return serialize_document(document, current_user.id)
 
 
 @router.get("/{document_id}/suggestions", response_model=DocumentSuggestions)
@@ -110,7 +127,7 @@ def suggestions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DocumentSuggestions:
-    document = repository.get_owned(db, document_id, current_user.id)
+    document = repository.get_accessible(db, document_id, current_user)
     if document is None:
         raise HTTPException(status_code=404, detail="Documento não encontrado.")
     name = document.original_filename
@@ -147,6 +164,13 @@ def owned(db, document_id, user_id):
     return document
 
 
+def accessible(db: Session, document_id: int, user: User) -> Document:
+    document = repository.get_accessible(db, document_id, user)
+    if not document:
+        raise HTTPException(404, "Documento não encontrado.")
+    return document
+
+
 @router.patch("/{document_id}", response_model=DocumentRead)
 def update_document(document_id: int, payload: DocumentUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     document = owned(db, document_id, user.id)
@@ -156,8 +180,29 @@ def update_document(document_id: int, payload: DocumentUpdate, user: User = Depe
         document.category = payload.category.strip()
     if payload.archived is not None:
         document.archived = payload.archived
+    if {"visibility", "team_id"} & payload.model_fields_set:
+        visibility = payload.visibility or document.visibility
+        try:
+            team_id = access_service.validate_scope(
+                db,
+                user,
+                visibility,
+                payload.team_id if "team_id" in payload.model_fields_set else document.team_id,
+            )
+        except InvalidDocumentScope as exc:
+            raise HTTPException(422, str(exc)) from exc
+        document.visibility = visibility
+        document.team_id = team_id
+    audit_service.record(
+        db,
+        "UPDATE_DOCUMENT",
+        user.id,
+        "document",
+        str(document.id),
+        details={"fields": sorted(payload.model_fields_set)},
+    )
     db.commit()
-    return serialize_document(document)
+    return serialize_document(document, user.id)
 
 
 @router.post("/{document_id}/reprocess", response_model=DocumentRead)
@@ -170,21 +215,21 @@ def reprocess(document_id: int, background_tasks: BackgroundTasks, user: User = 
     document.processing_stage = "Aguardando reprocessamento"
     db.commit()
     background_tasks.add_task(DocumentService.process_in_background, document.id)
-    return serialize_document(document)
+    return serialize_document(document, user.id)
 
 
 @router.get("/{document_id}/preview")
 def preview(document_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db), offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=300), page: int | None = Query(None, ge=1)):
-    document = owned(db, document_id, user.id)
+    document = accessible(db, document_id, user)
     sections = document.sections or []
     if page is not None:
         sections = [section for section in sections if section.get("page") == page]
-    return {"document":serialize_document(document), "sections":sections[offset:offset+limit], "total":len(sections)}
+    return {"document":serialize_document(document, user.id), "sections":sections[offset:offset+limit], "total":len(sections)}
 
 
 @router.get("/{document_id}/file")
 def download(document_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    document = owned(db, document_id, user.id)
+    document = accessible(db, document_id, user)
     path = Path(document.file_path).resolve()
     if not path.is_relative_to(get_settings().resolved_upload_dir.resolve()) or not path.is_file():
         raise HTTPException(404, "Arquivo original indisponível.")
@@ -194,7 +239,7 @@ def download(document_id: int, user: User = Depends(get_current_user), db: Sessi
 @router.get("/{document_id}/pages/{page}")
 def render_page(document_id: int, page: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     import pymupdf
-    document = owned(db, document_id, user.id)
+    document = accessible(db, document_id, user)
     path = Path(document.file_path).resolve()
     if document.file_type.upper() != "PDF" or not path.is_relative_to(get_settings().resolved_upload_dir.resolve()) or not path.is_file():
         raise HTTPException(404, "PDF indisponível.")

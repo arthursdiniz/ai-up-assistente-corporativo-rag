@@ -1,5 +1,15 @@
 # Verificação da evolução — 9 de setembro de 2026
 
+## Organizações e bases compartilhadas — 10 de setembro de 2026
+
+- Migration `20260910_0005` validada desde um PostgreSQL vazio, com 12 tabelas e nenhuma divergência em relação aos modelos SQLAlchemy.
+- 79 testes passaram em SQLite e no PostgreSQL isolado `ai_up_test_20260910_173509_647699`.
+- Documentos podem permanecer privados ou ser compartilhados com toda a organização ou com uma equipe; somente o proprietário pode alterá-los ou excluí-los.
+- O escopo da conversa e a recuperação RAG aceitam documentos compartilhados somente após autorização no PostgreSQL, incluindo teste real de resposta e fonte.
+- Usuários, estatísticas, qualidade e auditoria foram isolados por organização; administradores não gerenciam contas externas.
+- A base principal foi protegida pelo backup verificado `data/backups/20260910T172628180574Z` e migrada sem usuários ou documentos órfãos.
+- A interface administrativa ganhou gestão de empresa, equipes e integrantes; a biblioteca identifica a origem do acesso e permite escolher o escopo de compartilhamento.
+
 ## Segurança e auditoria operacional — 10 de setembro de 2026
 
 - 76 testes passaram em SQLite e no PostgreSQL isolado `ai_up_test_20260910_045706_536513`.

@@ -24,10 +24,12 @@ from app.services.rag_service import RAGService
 from app.services.llm.base import LLMUnavailableError
 from app.services.audit_service import AuditService
 from app.services import generation_service
+from app.services.document_access_service import DocumentAccessService
 
 router = APIRouter(prefix="/chats", tags=["Conversas"])
 repository = ChatRepository()
 audit_service = AuditService()
+document_access = DocumentAccessService()
 
 
 def serialize_message(message):
@@ -55,10 +57,16 @@ def check_idle(db, chat_id):
         raise HTTPException(409, "Aguarde ou cancele a resposta em andamento.")
 
 
-def validate_documents(db, user_id, ids):
+def validate_documents(db, user, ids):
     if ids is None:
         return
-    found = set(db.scalars(select(Document.id).where(Document.user_id == user_id, Document.id.in_(ids))))
+    found = set(
+        db.scalars(
+            select(Document.id).where(
+                Document.id.in_(ids), document_access.accessible_clause(user)
+            )
+        )
+    )
     if found != set(ids):
         raise HTTPException(404, "Um dos documentos selecionados não está disponível.")
 
@@ -67,7 +75,7 @@ def validate_documents(db, user_id, ids):
 def create_chat(payload: ChatCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not payload.title.strip():
         raise HTTPException(422, "Informe um título.")
-    validate_documents(db, current_user.id, payload.document_ids)
+    validate_documents(db, current_user, payload.document_ids)
     chat = Chat(user_id=current_user.id, title=payload.title.strip(), document_ids=payload.document_ids)
     db.add(chat)
     db.flush()
@@ -103,7 +111,7 @@ def update_chat(chat_id: int, payload: ChatUpdate, current_user: User = Depends(
     chat = owned(db, chat_id, current_user.id, lock=True)
     if "document_ids" in payload.model_fields_set:
         check_idle(db, chat.id)
-        validate_documents(db, current_user.id, payload.document_ids)
+        validate_documents(db, current_user, payload.document_ids)
         chat.document_ids = payload.document_ids
     if payload.title is not None:
         if not payload.title.strip():

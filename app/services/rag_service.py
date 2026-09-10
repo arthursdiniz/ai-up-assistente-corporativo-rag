@@ -23,6 +23,7 @@ from app.services.query_analysis_service import QuestionAnalysisService, QueryIn
 from app.services.reranking_service import RerankingService
 from app.services.retrieval_policy import RetrievalPolicy
 from app.services.vector_store_service import RetrievedChunk, VectorStoreService
+from app.services.document_access_service import DocumentAccessService
 
 
 class GenerationCancelled(RuntimeError):
@@ -33,6 +34,7 @@ class RAGService:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.audit = AuditService()
+        self.document_access = DocumentAccessService()
 
     def ask(self, db: Session, chat: Chat, user: User, question: str, *,
             emit=None, cancelled=None, retry_message_id=None, final_lock=None, committed=None) -> AskResponse:
@@ -62,7 +64,7 @@ class RAGService:
             embeddings = EmbeddingService(self.settings)
             vector_store = VectorStoreService(self.settings.resolved_chroma_dir)
             retrieved = vector_store.hybrid_search(
-                user_id=user.id, query_embedding=embeddings.embed_query(query), query_text=query,
+                user_id=None, query_embedding=embeddings.embed_query(query), query_text=query,
                 top_k=self.settings.rag_candidate_pool, candidate_pool=self.settings.rag_candidate_pool,
                 semantic_weight=self.settings.rag_semantic_weight,
                 lexical_scan_limit=self.settings.rag_lexical_scan_limit,
@@ -202,8 +204,14 @@ class RAGService:
         return current
 
     def _scope(self, db, chat, user, question, uses_history):
-        documents = list(db.scalars(select(Document).where(Document.user_id == user.id,
-            Document.status == DocumentStatus.READY)))
+        documents = list(
+            db.scalars(
+                select(Document).where(
+                    self.document_access.accessible_clause(user),
+                    Document.status == DocumentStatus.READY,
+                )
+            )
+        )
         normalized = QuestionAnalysisService.normalize(question)
         named = [document for document in documents if QuestionAnalysisService.normalize(document.original_filename) in normalized]
         requested_file = bool(re.search(r"\b[\w.-]+\.(?:pdf|docx|xlsx|txt|png|jpe?g)\b", question, re.I))

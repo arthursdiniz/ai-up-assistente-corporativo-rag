@@ -13,7 +13,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.models.document import Document, DocumentStatus
+from app.models.document import Document, DocumentStatus, DocumentVisibility
 from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
 from app.services.audit_service import AuditService
@@ -117,7 +117,10 @@ class DocumentService:
 
     def create_and_process(
         self, db: Session, user: User, original_filename: str, content: bytes, ip_address: str | None,
-        *, process: bool = True,
+        *,
+        process: bool = True,
+        visibility: DocumentVisibility = DocumentVisibility.PRIVATE,
+        team_id: int | None = None,
     ) -> Document:
         safe_original, file_type = self.validate(original_filename, content)
         content_hash = hashlib.sha256(content).hexdigest()
@@ -136,6 +139,9 @@ class DocumentService:
 
         document = Document(
             user_id=user.id,
+            organization_id=user.organization_id,
+            visibility=visibility,
+            team_id=team_id,
             filename=internal_name,
             original_filename=safe_original,
             file_type=file_type,

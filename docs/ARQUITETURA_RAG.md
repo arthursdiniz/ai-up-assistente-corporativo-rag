@@ -10,10 +10,10 @@ O limite de chunks considera o tokenizer real (modelo atual: 128 tokens máximos
 
 ## Consulta
 
-1. API autentica, verifica proprietário e registra um job com UUID idempotente.
+1. API autentica, valida o acesso documental pela organização/equipe e registra um job com UUID idempotente.
 2. Análise heurística identifica tarefa, continuação, quantidade pedida e formato.
-3. Define escopo: seleção da conversa, arquivos nomeados, fontes da resposta anterior ou documentos ativos do proprietário. Uma nova entidade nomeada não herda automaticamente o tema anterior.
-4. Busca híbrida combina embeddings e BM25, filtrando proprietário, documentos e geração do índice antes de buscar.
+3. Define escopo: seleção da conversa, arquivos nomeados, fontes da resposta anterior ou documentos ativos acessíveis. Uma nova entidade nomeada não herda automaticamente o tema anterior.
+4. Busca híbrida combina embeddings e BM25 usando somente IDs autorizados no PostgreSQL e a geração ativa de cada índice. O ChromaDB não decide permissões.
 5. Política de relevância e reranking ordenam candidatos. O score é sinal de recuperação, não probabilidade de verdade.
 6. Resumos/checklists/planos/comparações com escopo explícito usam todas as seções desse escopo. Sem seleção, expandem os documentos mais relevantes. Documentos extensos usam sínteses hierárquicas com referências originais e orçamento de contexto, incluindo o tamanho dos rótulos.
 7. Ollama local produz texto em streaming. O histórico ajuda a resolver referências, mas não é evidência documental nova.
@@ -30,7 +30,9 @@ Jobs têm estado persistido e transmissão parcial em memória. Reconexão repet
 
 ## Segurança
 
-- Proprietário validado em todas as operações de documentos, conversas, fontes e gerações.
+- Conversas, fontes e gerações são pessoais; leitura documental aceita propriedade ou compartilhamento explícito na mesma organização/equipe.
+- Alteração, reprocessamento e exclusão continuam reservados ao proprietário do documento.
+- Usuários, métricas e auditoria são filtrados por organização, inclusive para administradores.
 - JWT contém versão revogável; logout, troca de senha e mudança de permissões invalidam sessões.
 - Último administrador ativo não pode ser rebaixado ou desativado.
 - Limitador de login em memória com limites por IP/identidade.

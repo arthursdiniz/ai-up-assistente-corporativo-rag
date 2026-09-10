@@ -3,6 +3,9 @@ const { apiFetch, loadCurrentUser, showToast } = window.aiup;
 const statsContainer = document.querySelector("#stats");
 const logsContainer = document.querySelector("#logs");
 const usersContainer = document.querySelector("#users");
+const teamsContainer = document.querySelector("#teams");
+let currentUsers = [];
+let currentOrganization = null;
 const ACTION_LABELS = {
   BOOTSTRAP_ADMIN: "Administrador inicial criado",
   CHANGE_PASSWORD: "Senha alterada",
@@ -79,8 +82,69 @@ function userNode(user) {
 
 async function loadUsers() {
   const users = await apiFetch("/api/users");
+  currentUsers = users;
   usersContainer.replaceChildren();
   users.forEach((user) => usersContainer.append(userNode(user)));
+  if (currentOrganization) renderTeams();
+}
+
+function renderTeams() {
+  teamsContainer.replaceChildren();
+  if (!currentOrganization.teams.length) {
+    const empty = document.createElement("p");
+    empty.className = "table-empty";
+    empty.textContent = "Nenhuma equipe criada. Crie uma para compartilhar documentos com um grupo específico.";
+    teamsContainer.append(empty);
+    return;
+  }
+  currentOrganization.teams.forEach((team) => {
+    const card = document.createElement("article");
+    card.className = "team-card";
+    const heading = document.createElement("h3");
+    heading.textContent = team.name;
+    const description = document.createElement("p");
+    description.textContent = `${team.member_ids.length} integrante${team.member_ids.length === 1 ? "" : "s"}`;
+    const members = document.createElement("div");
+    members.className = "team-members";
+    currentUsers.forEach((user) => {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = user.id;
+      checkbox.checked = team.member_ids.includes(user.id);
+      const identity = document.createElement("span");
+      identity.textContent = `${user.name} · ${user.email}`;
+      label.append(checkbox, identity);
+      members.append(label);
+    });
+    const save = document.createElement("button");
+    save.className = "button secondary";
+    save.textContent = "Salvar integrantes";
+    save.addEventListener("click", async () => {
+      save.disabled = true;
+      const memberIds = [...members.querySelectorAll("input:checked")].map((input) => Number(input.value));
+      try {
+        await apiFetch(`/api/organizations/teams/${team.id}/members`, {
+          method: "PUT",
+          body: JSON.stringify({ user_ids: memberIds }),
+        });
+        await loadOrganization();
+        showToast("Integrantes da equipe atualizados.", "success");
+      } catch (reason) {
+        showToast(reason.message, "error");
+      } finally {
+        save.disabled = false;
+      }
+    });
+    card.append(heading, description, members, save);
+    teamsContainer.append(card);
+  });
+}
+
+async function loadOrganization() {
+  currentOrganization = await apiFetch("/api/organizations/current");
+  document.querySelector("#organization-name").value = currentOrganization.name;
+  renderTeams();
 }
 
 let logPage=1;
@@ -93,6 +157,30 @@ document.querySelector("#user-form").onsubmit=async event=>{
   event.preventDefault();const form=event.target;const values=Object.fromEntries(new FormData(form));
   try{await apiFetch("/api/users",{method:"POST",body:JSON.stringify({...values,role:"USER"})});form.reset();document.querySelector("#user-dialog").close();await loadUsers();showToast("Usuário criado.","success");}
   catch(error){showToast(error.message,"error");}
+};
+document.querySelector("#organization-form").onsubmit = async (event) => {
+  event.preventDefault();
+  try {
+    await apiFetch("/api/organizations/current", {
+      method: "PATCH",
+      body: JSON.stringify({ name: document.querySelector("#organization-name").value.trim() }),
+    });
+    await loadOrganization();
+    showToast("Nome da empresa atualizado.", "success");
+  } catch (reason) { showToast(reason.message, "error"); }
+};
+document.querySelector("#team-form").onsubmit = async (event) => {
+  event.preventDefault();
+  const input = document.querySelector("#team-name");
+  try {
+    await apiFetch("/api/organizations/teams", {
+      method: "POST",
+      body: JSON.stringify({ name: input.value.trim() }),
+    });
+    event.target.reset();
+    await loadOrganization();
+    showToast("Equipe criada.", "success");
+  } catch (reason) { showToast(reason.message, "error"); }
 };
 async function loadQuality(){
  const result=await apiFetch("/api/admin/quality"),container=document.querySelector("#quality");container.replaceChildren();
@@ -109,7 +197,12 @@ async function loadQuality(){
     if (!["MANAGER", "IT_ADMIN"].includes(user.role)) { window.location.href = "/"; return; }
     const [stats, logs] = await Promise.all([apiFetch("/api/admin/stats"), apiFetch("/api/admin/logs?page_size=20")]);
     renderStats(stats); renderLogs(logs.items); await loadLogs(); await loadQuality();
-    if (user.role === "IT_ADMIN") { document.querySelector("#users-panel").classList.remove("hidden"); await loadUsers(); }
+    if (user.role === "IT_ADMIN") {
+      document.querySelector("#users-panel").classList.remove("hidden");
+      document.querySelector("#organization-panel").classList.remove("hidden");
+      await loadUsers();
+      await loadOrganization();
+    }
   } catch (reason) { showToast(reason.message, "error"); }
 })();
 })();

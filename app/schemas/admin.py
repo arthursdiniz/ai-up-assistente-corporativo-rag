@@ -9,6 +9,7 @@ class AuditLogRead(BaseModel):
 
     id: int
     user_id: int | None
+    organization_id: int | None
     action: str
     resource_type: str | None
     resource_id: str | None

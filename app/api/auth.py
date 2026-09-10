@@ -119,7 +119,12 @@ def login(
     check_login(ip, payload.email)
     user = auth_service.authenticate(db, str(payload.email), payload.password)
     if user is None:
-        audit_service.record_login_failure(db, payload.email, ip)
+        audit_service.record_login_failure(
+            db,
+            payload.email,
+            ip,
+            organization_id=auth_service.organization_id_for_email(db, payload.email),
+        )
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha inválidos."

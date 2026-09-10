@@ -45,6 +45,7 @@ def test_cannot_access_another_users_document(client: TestClient) -> None:
         other = db.scalar(select(User).where(User.email == "outro@aiup.local"))
         document = Document(
             user_id=other.id,
+            organization_id=other.organization_id,
             filename="private.txt",
             original_filename="private.txt",
             file_type="TXT",

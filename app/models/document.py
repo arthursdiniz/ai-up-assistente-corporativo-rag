@@ -9,6 +9,8 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.message_source import MessageSource
+    from app.models.organization import Organization
+    from app.models.team import Team
     from app.models.user import User
 
 
@@ -19,11 +21,29 @@ class DocumentStatus(str, enum.Enum):
     ERROR = "ERROR"
 
 
+class DocumentVisibility(str, enum.Enum):
+    PRIVATE = "PRIVATE"
+    ORGANIZATION = "ORGANIZATION"
+    TEAM = "TEAM"
+
+
 class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teams.id", ondelete="SET NULL"), index=True
+    )
+    visibility: Mapped[DocumentVisibility] = mapped_column(
+        Enum(DocumentVisibility, name="document_visibility", native_enum=False),
+        default=DocumentVisibility.PRIVATE,
+        server_default=DocumentVisibility.PRIVATE.value,
+        nullable=False,
+    )
     filename: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_type: Mapped[str] = mapped_column(String(30), nullable=False)
@@ -52,6 +72,8 @@ class Document(Base):
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped["User"] = relationship(back_populates="documents")
+    organization: Mapped["Organization"] = relationship(back_populates="documents")
+    team: Mapped["Team | None"] = relationship(back_populates="documents")
     sources: Mapped[list["MessageSource"]] = relationship(
         back_populates="document", passive_deletes=True
     )
