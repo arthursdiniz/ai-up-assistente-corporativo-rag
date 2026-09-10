@@ -69,3 +69,14 @@ def technical_info(_: User = Depends(it_admin_only)) -> TechnicalInfo:
         embedding_model=settings.embedding_model,
         chroma_persistence=True,
     )
+
+
+@router.get("/quality")
+def quality(_: User = Depends(administrative), db: Session = Depends(get_db)):
+    messages = list(db.scalars(select(Message).where(Message.role == MessageRole.ASSISTANT).order_by(Message.id.desc()).limit(500)))
+    timed = [item.metrics["total_ms"] for item in messages if item.metrics and "total_ms" in item.metrics]
+    return {"sample_size":len(messages), "positive":sum(item.feedback == 1 for item in messages),
+        "negative":sum(item.feedback == -1 for item in messages),
+        "insufficient":sum((item.metrics or {}).get("status") == "insufficient" for item in messages),
+        "average_seconds":round(sum(timed)/len(timed)/1000, 1) if timed else None,
+        "recent_feedback":[{"message_id":item.id, "reason":item.feedback_reason or "Sem motivo informado"} for item in messages if item.feedback == -1][:20]}

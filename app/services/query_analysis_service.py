@@ -17,6 +17,8 @@ class QueryIntent(StrEnum):
     LOCATION = "location"
     FOLLOW_UP = "follow_up"
     CLARIFICATION = "clarification"
+    CHECKLIST = "checklist"
+    ACTION_PLAN = "action_plan"
 
 
 @dataclass(frozen=True)
@@ -25,6 +27,8 @@ class QuestionAnalysis:
     uses_history: bool
     broad_retrieval: bool
     clarification: str | None = None
+    item_limit: int | None = None
+    table_format: bool = False
 
     @property
     def task_instruction(self) -> str:
@@ -42,8 +46,15 @@ class QuestionAnalysis:
             QueryIntent.LOCATION: "Indique objetivamente onde a informação aparece; as fontes visuais são adicionadas pelo sistema.",
             QueryIntent.FOLLOW_UP: "Responda como continuação natural, resolvendo referências pelo histórico.",
             QueryIntent.CLARIFICATION: "Peça somente o esclarecimento mínimo necessário.",
+            QueryIntent.CHECKLIST: "Transforme obrigações explícitas em checklist. Preserve condições e cite cada item. Não crie obrigações.",
+            QueryIntent.ACTION_PLAN: "Organize ações explicitamente previstas nos documentos. Separe ação, responsável e prazo; use 'não informado' quando ausentes.",
         }
-        return instructions[self.intent]
+        instruction = instructions[self.intent]
+        if self.intent == QueryIntent.SUMMARY and self.item_limit:
+            instruction = f"Resuma em no máximo {self.item_limit} tópicos completos, priorizando o pedido do usuário."
+        if self.table_format:
+            instruction += " Apresente em tabela Markdown com cabeçalho e colunas simples."
+        return instruction
 
 
 class QuestionAnalysisService:
@@ -84,11 +95,16 @@ class QuestionAnalysisService:
             )
 
         intent = cls._classify(normalized, uses_history)
+        number_words = {"um":1, "dois":2, "tres":3, "quatro":4, "cinco":5, "seis":6, "sete":7, "oito":8, "nove":9, "dez":10}
+        count = re.search(r"\b(\d{1,2}|um|dois|tres|quatro|cinco|seis|sete|oito|nove|dez)\s+(?:topicos|pontos|itens)", normalized)
+        item_limit = min(20, max(1, int(count[1]) if count[1].isdigit() else number_words[count[1]])) if count else None
         return QuestionAnalysis(
             intent=intent,
             uses_history=uses_history,
             broad_retrieval=intent
-            in {QueryIntent.SUMMARY, QueryIntent.COMPARISON, QueryIntent.TIMELINE, QueryIntent.RISK},
+            in {QueryIntent.SUMMARY, QueryIntent.COMPARISON, QueryIntent.TIMELINE, QueryIntent.RISK, QueryIntent.CHECKLIST, QueryIntent.ACTION_PLAN}
+            or (intent == QueryIntent.EXTRACTION and any(word in normalized for word in ("todos", "todo ", "principais", "prazos e valores", "inteiro"))),
+            item_limit=item_limit, table_format="tabela" in normalized,
         )
 
     @classmethod
@@ -99,11 +115,9 @@ class QuestionAnalysisService:
     ) -> str:
         if not history or not cls.needs_context(question):
             return question
-        recent = history[-6:]
-        context = "\n".join(
-            f"{message.role}: {message.content[:600]}" for message in recent
-        )
-        return f"Pergunta atual: {question}\nContexto recente da conversa:\n{context}"
+        recent_user = next((message.content for message in reversed(history) if message.role == "user"), "")
+        recent_answer = next((message.content for message in reversed(history) if message.role == "assistant"), "")
+        return f"{question}\nAssunto da pergunta anterior: {recent_user[:350]}\nReferência recente: {recent_answer[:200]}"
 
     @staticmethod
     def task_instruction(analysis: QuestionAnalysis) -> str:
@@ -120,8 +134,12 @@ class QuestionAnalysisService:
         normalized = cls.normalize(question)
         tokens = set(re.findall(r"[a-z0-9]+", normalized))
         explicit_entity = cls._has_named_entity(question)
+        if explicit_entity:
+            return False
         return (
             normalized.startswith("e ")
+            or bool(re.match(r"^(?:qual|quais|quanto|quantos|como)\b.*\b(?:prazo|valor|limite|missao|regras|objetivo|responsavel|custo)\??$", normalized))
+            or normalized.startswith(("resuma", "simplifique", "transforme", "coloque em", "em tabela", "faca um checklist"))
             or any(phrase in normalized for phrase in cls._FOLLOW_UP_PHRASES)
             or (
                 not explicit_entity
@@ -141,6 +159,7 @@ class QuestionAnalysisService:
         common = {
             "a", "as", "compare", "como", "e", "explique", "fale", "ha",
             "onde", "o", "os", "pode", "qual", "quais", "resuma",
+            "dois", "tres", "topicos", "tabela", "principais",
         }
         return any(
             token[:1].isupper() and cls.normalize(token) not in common
@@ -157,9 +176,13 @@ class QuestionAnalysisService:
 
     @staticmethod
     def _classify(normalized: str, uses_history: bool) -> QueryIntent:
+        if "checklist" in normalized or "lista de verificacao" in normalized:
+            return QueryIntent.CHECKLIST
+        if "plano de acao" in normalized or "plano de acoes" in normalized:
+            return QueryIntent.ACTION_PLAN
         if any(term in normalized for term in ("compare", "comparar", "diferenca", "contradicao")):
             return QueryIntent.COMPARISON
-        if any(term in normalized for term in ("resuma", "resumo", "principais pontos", "o que mais")):
+        if any(term in normalized for term in ("resuma", "resumo", "principais pontos", "o que mais", "mais importante")):
             return QueryIntent.SUMMARY
         if any(term in normalized for term in ("risco", "riscos", "alerta", "pontos de atencao")):
             return QueryIntent.RISK

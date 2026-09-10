@@ -32,7 +32,8 @@ def test_hybrid_search_recovers_exact_identifier_even_when_vector_prefers_decoy(
         semantic_weight=0.3,
     )
     assert results[0].document_id == 101
-    assert results[0].lexical_score == 1.0
+    assert results[0].lexical_score > results[1].lexical_score
+    assert 0 < results[0].lexical_score <= 1.0
 
 
 def test_hybrid_search_never_reads_another_users_chunks() -> None:

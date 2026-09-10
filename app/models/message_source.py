@@ -17,9 +17,12 @@ class MessageSource(Base):
     message_id: Mapped[int] = mapped_column(
         ForeignKey("messages.id", ondelete="CASCADE"), index=True
     )
-    document_id: Mapped[int] = mapped_column(
-        ForeignKey("documents.id", ondelete="CASCADE"), index=True
+    document_id: Mapped[int | None] = mapped_column(
+        ForeignKey("documents.id", ondelete="SET NULL"), index=True
     )
+    document_name: Mapped[str | None] = mapped_column(String(255))
+    location: Mapped[str | None] = mapped_column(String(255))
+    citation: Mapped[int | None] = mapped_column(Integer)
     chunk_id: Mapped[str] = mapped_column(String(255), nullable=False)
     page: Mapped[int | None] = mapped_column(Integer)
     sheet: Mapped[str | None] = mapped_column(String(255))
@@ -27,4 +30,4 @@ class MessageSource(Base):
     relevance_score: Mapped[float] = mapped_column(Float, nullable=False)
 
     message: Mapped["Message"] = relationship(back_populates="sources")
-    document: Mapped["Document"] = relationship(back_populates="sources")
+    document: Mapped["Document | None"] = relationship(back_populates="sources")

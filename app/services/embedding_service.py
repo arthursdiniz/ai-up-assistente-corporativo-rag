@@ -23,8 +23,29 @@ class SentenceTransformerEmbeddingProvider(EmbeddingProvider):
             self.model = SentenceTransformer(model_name)
 
     def encode(self, texts: list[str]) -> list[list[float]]:
-        vectors = self.model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-        return vectors.tolist()
+        # Queries may contain conversational context. Pool bounded windows rather
+        # than silently truncating their final subject at the model token limit.
+        import numpy as np
+        windows, groups = [], []
+        maximum = self.model.max_seq_length - self.model.tokenizer.num_special_tokens_to_add(False)
+        for text in texts:
+            offsets = self.model.tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)["offset_mapping"]
+            start = len(windows)
+            for position in range(0, len(offsets), maximum):
+                part = offsets[position:position + maximum]
+                windows.append(text[part[0][0]:part[-1][1]])
+            if len(windows) == start:
+                windows.append(text)
+            groups.append((start, len(windows)))
+        if not windows:
+            return []
+        vectors = self.model.encode(windows, normalize_embeddings=True, show_progress_bar=False)
+        output = []
+        for start, end in groups:
+            vector = np.mean(vectors[start:end], axis=0)
+            vector = vector / max(float(np.linalg.norm(vector)), 1e-12)
+            output.append(vector.tolist())
+        return output
 
 
 class HashEmbeddingProvider(EmbeddingProvider):
@@ -60,6 +81,15 @@ def _provider(provider_name: str, model_name: str) -> EmbeddingProvider:
 class EmbeddingService:
     def __init__(self, settings: Settings) -> None:
         self.provider = _provider(settings.embedding_provider, settings.embedding_model)
+
+    @property
+    def max_tokens(self) -> int:
+        return self.provider.model.max_seq_length if hasattr(self.provider, "model") else 128
+
+    def token_count(self, text: str) -> int:
+        if hasattr(self.provider, "model"):
+            return len(self.provider.model.tokenizer.encode(text, add_special_tokens=True))
+        return len(re.findall(r"\w+|[^\w\s]", text)) + 2
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self.provider.encode(texts)

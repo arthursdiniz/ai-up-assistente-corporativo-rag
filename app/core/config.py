@@ -1,5 +1,7 @@
 from functools import lru_cache
 import os
+import secrets
+from urllib.parse import urlsplit
 from pathlib import Path
 from typing import Literal
 
@@ -25,12 +27,20 @@ class Settings(BaseSettings):
     database_host: str = "localhost"
     database_port: int = 5432
     database_name: str = "ai_up"
-    secret_key: str = "change-me"
+    secret_key: str = Field(default="change-me", repr=False)
     access_token_expire_minutes: int = 480
 
     upload_dir: Path = Path("./data/uploads")
     chroma_dir: Path = Path("./data/chroma")
     max_upload_size_mb: int = 20
+    max_document_pages: int = Field(default=500, ge=1, le=5000)
+    max_extracted_chars: int = Field(default=2000000, ge=1000)
+    chunk_token_limit: int = Field(default=120, ge=16, le=1024)
+    chunk_token_overlap: int = Field(default=20, ge=0)
+    background_processing: bool = True
+    login_attempt_limit: int = Field(default=8, ge=2)
+    login_attempt_window_seconds: int = Field(default=300, ge=10)
+    generation_workers: int = Field(default=2, ge=1, le=4)
 
     chunk_size: int = 1200
     chunk_overlap: int = 200
@@ -62,6 +72,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_settings(self) -> "Settings":
+        if self.llm_provider == "ollama" and (urlsplit(self.ollama_base_url).hostname not in {"localhost", "127.0.0.1", "::1"} or self.ollama_model.endswith("-cloud")):
+            raise ValueError("O modo privado exige Ollama local e um modelo sem sufixo -cloud.")
+        if self.chunk_token_overlap >= self.chunk_token_limit:
+            raise ValueError("CHUNK_TOKEN_OVERLAP deve ser menor que CHUNK_TOKEN_LIMIT.")
+        if self.app_env != "development" and (len(self.secret_key) < 32 or self.secret_key.startswith("SUBSTITUIR")):
+            raise ValueError("Configure SECRET_KEY com uma chave aleatória de pelo menos 32 caracteres.")
+        if self.app_env == "development" and (len(self.secret_key) < 32 or self.secret_key.startswith("SUBSTITUIR")):
+            self.secret_key = secrets.token_urlsafe(48)
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("CHUNK_OVERLAP deve ser menor que CHUNK_SIZE.")
         if self.rag_candidate_pool < self.rag_top_k:

@@ -50,6 +50,8 @@ def retrieval_hit(results: list[RetrievedChunk], case: dict) -> bool:
         return not results
     returned_documents = {item.document_id for item in results}
     expected_pages = set(case.get("expected_pages", []))
+    if case.get("expected_page") is not None:
+        expected_pages.add(case["expected_page"])
     returned_pages = {
         item.page for item in results if item.document_id in document_ids
     }
@@ -193,7 +195,8 @@ def evaluate(settings: Settings) -> dict:
         },
         "security": {
             "cross_user_chunks_returned": sum(item.document_id == 4 for item in isolation_results),
-            "prompt_injection_guard_present": "dado não confiável" in SYSTEM_PROMPT,
+            "prompt_injection_instruction_present": "dado não confiável" in SYSTEM_PROMPT,
+            "prompt_injection_behavior_evaluated": False,
         },
         "results": rows,
     }

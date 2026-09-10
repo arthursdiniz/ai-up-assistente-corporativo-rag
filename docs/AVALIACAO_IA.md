@@ -1,40 +1,41 @@
-# Avaliação da IA do AI-Up
+# Avaliação do AI-Up — 9 de setembro de 2026
 
-## Objetivo e método
+## Resultados reproduzidos
 
-A avaliação reproduzível compara a recuperação vetorial anterior com o pipeline híbrido atual. O corpus sintético contém regulamento em três páginas, dados institucionais, datas, valores, um código exato, uma tentativa de injeção e um documento pertencente a outro usuário.
+A busca foi avaliada com embeddings reais, em 20 perguntas sobre um corpus sintético pequeno.
 
-Os treze casos cobrem pergunta factual, sinônimo, número, código, continuação por pronome, continuação vaga, mudança de assunto, linha do tempo, comparação entre documentos, resposta em páginas distintas, informação ausente e injeção de prompt. O relatório completo é salvo em `output/evaluation/latest.json`.
-
-```powershell
-.venv\Scripts\python.exe scripts\evaluate_ai.py --embedding-provider sentence_transformers
-```
-
-## Resultado em 8 de setembro de 2026
-
-| Métrica | Busca anterior | Pipeline atual |
+| Métrica | Vetorial | Híbrida |
 |---|---:|---:|
-| Hit@3 incluindo recusa correta | 92,31% | 100,00% |
-| Precisão média das fontes no Top 3 | 51,28% | 74,36% |
-| Acerto da primeira fonte | — | 100,00% |
-| Resolução de perguntas contextuais | — | 100,00% |
-| Recusa correta da informação ausente | — | 100,00% |
-| Latência média de recuperação | 1,75 ms | 2,93 ms |
-| Trechos de outro usuário retornados | — | 0 |
+| Hit@3, incluindo ausência correta de resultados | 85% | 90% |
+| Precisão média dos trechos retornados (até 3) | 45,83% | 66,67% |
+| Primeiro resultado correto | — | 90% |
+| Recuperação contextual nos 3 casos de contexto | — | 100% |
+| Ausência de resultados nos 3 casos sem resposta | — | 33,33% |
+| Trechos retornados de outro usuário | — | 0 |
 
-O acréscimo médio de 1,18 ms ocorreu no corpus pequeno e representa o custo da busca lexical, fusão e reranking. A latência varia entre execuções conforme a máquina; para a demonstração local, a diferença é imperceptível diante do tempo de geração do modelo.
+A nomenclatura before/after do JSON compara os dois algoritmos **na mesma execução**, não uma experiência longitudinal. Latências do JSON medem somente busca e ordenação, excluindo embeddings, ingestão e geração.
 
-## Leitura honesta do resultado
+A busca ainda retorna contexto semelhante em duas perguntas cuja resposta não existe. Por isso não basta reduzir um limiar e declarar a IA mais inteligente: o modelo precisa reconhecer que o fato pedido está ausente.
 
-O ganho mais importante não é apenas o Hit@3: a fonte correta passa a ocupar a primeira posição e há menos páginas irrelevantes. O caso ausente também é recusado antes de oferecer uma evidência fraca.
+Na avaliação separada de geração real, Ollama qwen3:4b-instruct passou em **6/6 fixtures**: código literal, dois casos de informação ausente, injeção documental, comparação com duas fontes e continuação curta. São verificações literais controladas, não prova de robustez contra toda injeção nem estimativa de precisão em documentos reais.
 
-Este conjunto é pequeno, sintético e conhecido; portanto, 100% não significa precisão universal. Ele serve como teste de regressão da recuperação e das decisões de fundamentação, não como prova automática de que toda redação gerada estará correta. A qualidade final do texto do Ollama, documentos escaneados difíceis, grandes coleções e perguntas fora do domínio ainda exigem avaliação humana e um corpus institucional maior.
+## Reprodução
 
-## Critérios para validação humana
+Execute na raiz:
 
-- a resposta contém somente fatos sustentados pelos excertos;
-- nomes, datas, valores e unidades são preservados;
-- pergunta contextual mantém o assunto correto;
-- mudança explícita de tema ignora o histórico irrelevante;
-- fonte exibida permite conferir a afirmação;
-- informação ausente gera recusa clara, sem invenção.
+~~~powershell
+.venv\Scripts\python.exe scripts\evaluate_ai.py
+.venv\Scripts\python.exe scripts\evaluate_generation.py
+.venv\Scripts\python.exe -m pytest -q
+~~~
+
+Resultados completos: output/evaluation/latest.json e output/evaluation/generation.json. Fixtures e protocolo humano: evals/.
+
+## Limitações explícitas
+
+- Nenhuma porcentagem acima representa “precisão da IA” em geral.
+- Citação existente não prova que uma afirmação é semanticamente sustentada. A interface permite conferência; referências inválidas/ausentes geram aviso.
+- Resumos longos usam condensação hierárquica e podem perder detalhes.
+- A análise de assunto é heurística, não memória humana. Um escopo explícito reduz ambiguidades.
+- OCR depende da qualidade da imagem e do idioma instalado.
+- Resultados antigos de 100% em 13 perguntas foram substituídos pela avaliação ampliada, com correção da checagem de página singular.

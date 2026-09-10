@@ -8,14 +8,19 @@ class TextChunk:
     page: int | None
     chunk_index: int
     sheet: str | None = None
+    location: str | None = None
 
 
 class ChunkingService:
-    def __init__(self, chunk_size: int, overlap: int) -> None:
+    def __init__(self, chunk_size: int, overlap: int, *, token_counter=None,
+                 token_limit: int = 120, token_overlap: int = 20) -> None:
         if overlap >= chunk_size:
             raise ValueError("O overlap deve ser menor que o tamanho do chunk.")
         self.chunk_size = chunk_size
         self.overlap = overlap
+        self.token_counter = token_counter
+        self.token_limit = token_limit
+        self.token_overlap = token_overlap
 
     def split(self, sections: list[dict]) -> list[TextChunk]:
         chunks: list[TextChunk] = []
@@ -26,6 +31,15 @@ class ChunkingService:
             start = 0
             while start < len(text):
                 tentative_end = min(start + self.chunk_size, len(text))
+                if self.token_counter:
+                    low, high = start + 1, tentative_end
+                    while low < high:
+                        mid = (low + high + 1) // 2
+                        if self.token_counter(text[start:mid]) <= self.token_limit:
+                            low = mid
+                        else:
+                            high = mid - 1
+                    tentative_end = low
                 end = self._natural_break(text, start, tentative_end)
                 chunk_text = text[start:end].strip()
                 if chunk_text:
@@ -35,11 +49,16 @@ class ChunkingService:
                             page=section.get("page"),
                             sheet=section.get("sheet"),
                             chunk_index=len(chunks),
+                            location=section.get("location"),
                         )
                     )
                 if end >= len(text):
                     break
-                start = max(end - self.overlap, start + 1)
+                next_start = max(end - self.overlap, start + 1)
+                if self.token_counter:
+                    while next_start < end and self.token_counter(text[next_start:end]) > self.token_overlap:
+                        next_start += 1
+                start = next_start
         return chunks
 
     @staticmethod

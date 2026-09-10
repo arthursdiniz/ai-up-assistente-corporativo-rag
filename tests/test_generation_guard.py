@@ -1,14 +1,13 @@
 from app.services.generation_guard import GenerationGuard
 
 
-def test_restores_identifier_mistyped_by_small_local_model() -> None:
+def test_does_not_guess_a_replacement_for_identifier() -> None:
     corrected = GenerationGuard.preserve_shared_identifiers(
         "O contrato ZX-90 tem prazo de 45 dias.",
         "Qual é o prazo do contrato ZX-900?",
         ["O contrato ZX-900 tem prazo de 45 dias."],
     )
-    assert "ZX-900" in corrected
-    assert "ZX-90 " not in corrected
+    assert corrected == "O contrato ZX-90 tem prazo de 45 dias."
 
 
 def test_does_not_add_identifier_that_is_not_in_document_context() -> None:

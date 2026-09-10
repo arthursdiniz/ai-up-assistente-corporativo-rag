@@ -31,6 +31,15 @@ class UserUpdate(BaseModel):
     role: UserRole | None = None
     active: bool | None = None
 
+    @field_validator("name", "role", "active", mode="before")
+    @classmethod
+    def reject_null(cls, value):
+        if value is None:
+            raise ValueError("O valor não pode ser nulo.")
+        if isinstance(value, str) and not value.strip():
+            raise ValueError("Informe um valor válido.")
+        return value.strip() if isinstance(value, str) else value
+
 
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)

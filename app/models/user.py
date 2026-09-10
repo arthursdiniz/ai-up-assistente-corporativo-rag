@@ -1,7 +1,7 @@
 import enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, String
+from sqlalchemy import Boolean, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -29,6 +29,7 @@ class User(TimestampMixin, Base):
         Enum(UserRole, name="user_role", native_enum=False), default=UserRole.USER, nullable=False
     )
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
     chats: Mapped[list["Chat"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     documents: Mapped[list["Document"]] = relationship(

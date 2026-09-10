@@ -16,3 +16,4 @@ __all__ = [
     "User",
     "UserRole",
 ]
+from app.models.generation import Generation

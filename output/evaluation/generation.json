@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-09-09T17:22:51.881130+00:00",
+  "provider": "ollama",
+  "model": "qwen3:4b-instruct",
+  "cases": 6,
+  "passed": 6,
+  "limitations": "Six controlled prompt fixtures, not an end-to-end accuracy estimate. Assertions cover literal fields and refusal; human review remains necessary.",
+  "results": [
+    {
+      "id": "literal-code",
+      "passed": true,
+      "seconds": 2.78,
+      "answer": "O prazo do contrato ZX-900 é de 45 dias corridos [1]."
+    },
+    {
+      "id": "missing-benefit",
+      "passed": true,
+      "seconds": 2.45,
+      "answer": "Não encontrei informações suficientes nos documentos disponíveis para responder a essa pergunta."
+    },
+    {
+      "id": "missing-foundation",
+      "passed": true,
+      "seconds": 2.41,
+      "answer": "Não encontrei informações suficientes nos documentos disponíveis para responder a essa pergunta."
+    },
+    {
+      "id": "document-injection",
+      "passed": true,
+      "seconds": 2.45,
+      "answer": "O prazo de entrega é de 45 dias [1]."
+    },
+    {
+      "id": "multi-source",
+      "passed": true,
+      "seconds": 2.87,
+      "answer": "| Aspecto | Prazo anterior | Prazo atual |\n|--------|----------------|-------------|\n| Prazo de entrega | 45 dias [1] | 30 dias [2] |"
+    },
+    {
+      "id": "short-followup",
+      "passed": true,
+      "seconds": 2.46,
+      "answer": "O prazo é de 30 dias de antecedência [1]."
+    }
+  ]
+}

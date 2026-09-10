@@ -23,7 +23,21 @@ logger = logging.getLogger("ai_up")
 async def lifespan(_: FastAPI):
     settings.resolved_upload_dir.mkdir(parents=True, exist_ok=True)
     settings.resolved_chroma_dir.mkdir(parents=True, exist_ok=True)
+    from sqlalchemy import select
+    from app.db.session import SessionLocal
+    from app.models.document import Document, DocumentStatus
+    from app.models.generation import Generation
+    from app.services.generation_service import shutdown
+    with SessionLocal() as db:
+        for job in db.scalars(select(Generation).where(Generation.status.in_(["queued", "running"]))):
+            job.status, job.stage, job.error = "error", "Execução interrompida", "O aplicativo foi reiniciado. Envie a pergunta novamente."
+        for document in db.scalars(select(Document).where(Document.status.in_([DocumentStatus.UPLOADED, DocumentStatus.PROCESSING]))):
+            document.status = DocumentStatus.READY if document.index_generation else DocumentStatus.ERROR
+            document.processing_stage = "Processamento interrompido"
+            document.error_message = "O aplicativo foi reiniciado. Use Reprocessar para continuar."
+        db.commit()
     yield
+    shutdown()
 
 
 app = FastAPI(
@@ -36,7 +50,7 @@ app = FastAPI(
 
 @app.exception_handler(Exception)
 async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("Erro não tratado em %s", request.url.path, exc_info=exc)
+    logger.error("Erro não tratado em %s (%s)", request.url.path, type(exc).__name__)
     return JSONResponse(status_code=500, content={"detail": "Erro interno do servidor."})
 
 

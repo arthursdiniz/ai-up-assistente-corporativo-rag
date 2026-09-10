@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Conversas — AI-Up</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/css/app.css?v=7">
+    <title>Conversas — AI-Up</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/css/app.css?v=12">
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -10,13 +10,13 @@
         <a class="wordmark" href="/">AI<span>↑</span>UP</a>
         <button id="new-chat" class="button primary full">+ Nova conversa</button>
         <nav class="nav-links" aria-label="Navegação principal"><a class="active" href="/">Conversas</a><a href="/documents.html">Documentos</a><a id="admin-link" class="hidden" href="/admin.html">Administração</a></nav>
-        <div class="sidebar-section"><p class="section-label">SUAS CONVERSAS</p><div id="chat-list" class="chat-list"></div></div>
+        <div class="sidebar-section"><label class="sr-only" for="chat-search">Buscar conversas</label><input id="chat-search" type="search" placeholder="Buscar nas conversas…"><p class="section-label">SUAS CONVERSAS</p><div id="chat-list" class="chat-list"></div><button id="more-chats" class="text-button hidden">Carregar mais</button></div>
         <div class="user-card"><div class="avatar" id="user-initial">A</div><div><strong id="user-name">Carregando…</strong><small id="user-role"></small></div><button id="logout" class="icon-button" title="Sair" aria-label="Sair">↗</button></div>
       </aside>
       <main class="workspace">
-        <header class="workspace-header"><div><p class="section-label">CONVERSA ATUAL</p><h1 id="chat-title">Selecione uma conversa</h1></div><div class="header-actions"><button id="rename-chat" class="icon-button" title="Renomear" aria-label="Renomear conversa">✎</button><button id="delete-chat" class="icon-button danger" title="Excluir" aria-label="Excluir conversa">⌫</button></div></header>
+        <header class="workspace-header"><div class="chat-heading"><p class="section-label">CONVERSA ATUAL</p><h1 id="chat-title">Nova conversa</h1><button id="select-scope" class="text-button">Todos os documentos ativos</button></div><div class="header-actions"><button id="pin-chat" class="icon-button" title="Favoritar" aria-label="Favoritar conversa">☆</button><button id="export-chat" class="icon-button" title="Exportar" aria-label="Exportar conversa">⇩</button><button id="rename-chat" class="icon-button" title="Renomear" aria-label="Renomear conversa">✎</button><button id="delete-chat" class="icon-button danger" title="Excluir" aria-label="Excluir conversa">⌫</button></div></header>
         <section id="messages" class="messages" aria-live="polite" aria-label="Histórico da conversa" tabindex="0"><div class="empty-state"><div class="brand-mark">A↑</div><h2>Faça uma pergunta aos seus documentos.</h2><p>Crie uma conversa e envie documentos para começar.</p></div></section>
-        <form id="message-form" class="composer"><label class="sr-only" for="message-input">Faça uma pergunta</label><textarea id="message-input" rows="1" maxlength="4000" placeholder="Pergunte algo sobre seus documentos…" required></textarea><button class="send-button" type="submit" title="Enviar" aria-label="Enviar pergunta">↑</button><small id="composer-hint">O AI-Up responde somente com base nos trechos recuperados.</small></form>
+        <form id="message-form" class="composer"><div class="composer-tools"><button id="attach-document" type="button" class="text-button">＋ Anexar documentos</button><button id="jump-latest" type="button" class="text-button hidden">↓ Última mensagem</button><button id="resume-answer" type="button" class="text-button hidden">Retomar resposta</button></div><input id="chat-file-input" type="file" accept=".pdf,.txt,.docx,.xlsx,.png,.jpg,.jpeg" multiple hidden><label class="sr-only" for="message-input">Faça uma pergunta</label><textarea id="message-input" rows="1" maxlength="4000" placeholder="Pergunte algo sobre seus documentos…" required></textarea><button class="send-button" type="submit" title="Enviar" aria-label="Enviar pergunta">↑</button><button id="cancel-answer" class="button secondary hidden" type="button">Parar resposta</button><small id="composer-hint">Respostas com fontes dos documentos selecionados. Enter envia; Shift+Enter quebra a linha.</small></form>
       </main>
     </div>
     <dialog id="rename-dialog" class="app-dialog" aria-labelledby="rename-dialog-title">
@@ -36,6 +36,9 @@
         <div class="dialog-actions"><button id="cancel-delete" class="button secondary" type="button">Cancelar</button><button id="confirm-delete" class="button danger-button" type="button">Excluir conversa</button></div>
       </div>
     </dialog>
-    <div id="toast" class="toast" role="status"></div><script src="/js/api.js?v=3"></script><script src="/js/chat.js?v=7"></script>
+    <dialog id="scope-dialog" class="app-dialog wide-dialog" aria-labelledby="scope-title"><form id="scope-form"><h2 id="scope-title">Documentos desta conversa</h2><p>Escolha a base da resposta. Versões arquivadas só entram quando selecionadas explicitamente.</p><label><input id="scope-all" type="checkbox"> Todos os documentos ativos</label><div id="scope-options" class="scope-options"></div><div class="dialog-actions"><button class="button secondary" type="button" data-close="scope-dialog">Cancelar</button><button class="button primary" type="submit">Aplicar</button></div></form></dialog>
+    <dialog id="feedback-dialog" class="app-dialog" aria-labelledby="feedback-title"><form id="feedback-form"><h2 id="feedback-title">O que pode melhorar?</h2><label for="feedback-reason">Motivo</label><select id="feedback-reason"><option>Não respondeu à pergunta</option><option>Informação incorreta</option><option>Fonte inadequada</option><option>Resposta incompleta</option><option>Demorou muito</option></select><label for="feedback-comment">Comentário opcional</label><textarea id="feedback-comment" maxlength="350" rows="3"></textarea><div class="dialog-actions"><button class="button secondary" type="button" data-close="feedback-dialog">Cancelar</button><button class="button primary">Enviar avaliação</button></div></form></dialog>
+    <dialog id="export-dialog" class="app-dialog" aria-labelledby="export-title"><div><h2 id="export-title">Exportar conversa com fontes</h2><p>Escolha o formato. O relatório HTML também pode ser impresso ou salvo como PDF pelo navegador.</p><button class="button secondary" data-export="markdown">Markdown (.md)</button><button class="button secondary" data-export="html">Relatório para impressão (.html)</button><button class="button secondary" data-export="json">Dados estruturados (.json)</button><button class="text-button" data-close="export-dialog">Fechar</button></div></dialog>
+    <div id="toast" class="toast" role="status"></div><script src="/js/api.js?v=11"></script><script src="/js/chat.js?v=11"></script>
   </body>
 </html>

@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 from typing import Any
 import unicodedata
+import time
+import uuid
 
 import chromadb
 
@@ -22,6 +24,11 @@ class RetrievedChunk:
     sheet: str | None = None
     semantic_score: float = 0.0
     lexical_score: float = 0.0
+    location: str | None = None
+    citation: int = 0
+
+
+_lexical_cache: dict = {}
 
 
 @lru_cache(maxsize=8)
@@ -49,8 +56,10 @@ class VectorStoreService:
         filename: str,
         chunks: list[TextChunk],
         embeddings: list[list[float]],
-    ) -> None:
-        ids = [f"document-{document_id}-chunk-{chunk.chunk_index}" for chunk in chunks]
+        generation: str | None = None,
+    ) -> str:
+        generation = generation or uuid.uuid4().hex
+        ids = [f"document-{document_id}-{generation}-chunk-{chunk.chunk_index}" for chunk in chunks]
         metadatas: list[dict[str, Any]] = []
         for chunk in chunks:
             metadata: dict[str, Any] = {
@@ -58,26 +67,43 @@ class VectorStoreService:
                 "user_id": user_id,
                 "filename": filename,
                 "chunk_index": chunk.chunk_index,
+                "generation": generation,
             }
             if chunk.page is not None:
                 metadata["page"] = chunk.page
             if chunk.sheet is not None:
                 metadata["sheet"] = chunk.sheet
+            if chunk.location:
+                metadata["location"] = chunk.location
             metadatas.append(metadata)
-        self.collection.upsert(
-            ids=ids,
-            documents=[chunk.text for chunk in chunks],
-            embeddings=embeddings,
-            metadatas=metadatas,
-        )
+        for start in range(0, len(ids), 128):
+            self.collection.upsert(ids=ids[start:start+128],
+                documents=[chunk.text for chunk in chunks[start:start+128]],
+                embeddings=embeddings[start:start+128], metadatas=metadatas[start:start+128])
+        _lexical_cache.clear()
+        return generation
 
-    def search(self, user_id: int, query_embedding: list[float], top_k: int) -> list[RetrievedChunk]:
+    @staticmethod
+    def _where(user_id: int, document_ids=None, generations=None):
+        conditions = [{"user_id": user_id}]
+        if document_ids is not None:
+            conditions.append({"document_id": {"$in": document_ids or [-1]}})
+        if generations:
+            alternatives = [{"$and": [{"document_id": key}, {"generation": value}]} for key, value in generations.items() if value]
+            legacy = [key for key, value in generations.items() if not value]
+            if legacy:
+                alternatives.append({"document_id": {"$in": legacy}})
+            if alternatives:
+                conditions.append(alternatives[0] if len(alternatives) == 1 else {"$or": alternatives})
+        return conditions[0] if len(conditions) == 1 else {"$and": conditions}
+
+    def search(self, user_id: int, query_embedding: list[float], top_k: int, document_ids=None, generations=None) -> list[RetrievedChunk]:
         if self.collection.count() == 0:
             return []
         result = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=min(top_k, self.collection.count()),
-            where={"user_id": user_id},
+            where=self._where(user_id, document_ids, generations),
             include=["documents", "metadatas", "distances"],
         )
         ids = result.get("ids", [[]])[0]
@@ -96,6 +122,7 @@ class VectorStoreService:
                     relevance_score=max(0.0, 1.0 - float(distance)),
                     sheet=str(metadata["sheet"]) if "sheet" in metadata else None,
                     semantic_score=max(0.0, 1.0 - float(distance)),
+                    location=metadata.get("location"),
                 )
             )
         return chunks
@@ -109,6 +136,8 @@ class VectorStoreService:
         candidate_pool: int = 20,
         semantic_weight: float = 0.65,
         lexical_scan_limit: int = 5000,
+        document_ids=None,
+        generations=None,
     ) -> list[RetrievedChunk]:
         """Fuse semantic similarity with a lightweight local BM25 search.
 
@@ -119,9 +148,9 @@ class VectorStoreService:
         if self.collection.count() == 0:
             return []
         pool_size = max(top_k, candidate_pool)
-        semantic = self.search(user_id, query_embedding, pool_size)
+        semantic = self.search(user_id, query_embedding, pool_size, document_ids, generations)
         lexical = self._lexical_search(
-            user_id, query_text, pool_size, lexical_scan_limit
+            user_id, query_text, pool_size, lexical_scan_limit, document_ids, generations
         )
 
         semantic_by_id = {chunk.chunk_id: chunk for chunk in semantic}
@@ -151,6 +180,7 @@ class VectorStoreService:
                     sheet=base.sheet,
                     semantic_score=semantic_score,
                     lexical_score=lexical_score,
+                    location=base.location,
                 )
             )
         combined.sort(key=lambda chunk: chunk.relevance_score, reverse=True)
@@ -162,25 +192,28 @@ class VectorStoreService:
         query_text: str,
         top_k: int,
         scan_limit: int,
+        document_ids=None,
+        generations=None,
     ) -> list[RetrievedChunk]:
         query_terms = self._terms(query_text)
         if not query_terms:
             return []
-        result = self.collection.get(
-            where={"user_id": user_id},
-            include=["documents", "metadatas"],
-            limit=scan_limit,
-        )
+        cache_key = (id(self.collection), user_id, tuple(document_ids or []), tuple(sorted((generations or {}).items())), scan_limit)
+        cached = _lexical_cache.get(cache_key)
+        if cached and time.monotonic() - cached[0] < 60:
+            result, tokenized = cached[1:]
+        else:
+            result = self.collection.get(where=self._where(user_id, document_ids, generations), include=["documents", "metadatas"], limit=scan_limit)
+            tokenized = [self._terms(f'{text or ""} {(metadata or {}).get("filename", "")}') for text, metadata in zip(result.get("documents") or [], result.get("metadatas") or [])]
+            if len(_lexical_cache) > 32:
+                _lexical_cache.clear()
+            _lexical_cache[cache_key] = (time.monotonic(), result, tokenized)
         ids = result.get("ids", [])
         documents = result.get("documents") or []
         metadatas = result.get("metadatas") or []
         if not ids:
             return []
 
-        tokenized = [
-            self._terms(f'{text or ""} {(metadata or {}).get("filename", "")}')
-            for text, metadata in zip(documents, metadatas)
-        ]
         document_frequency = {
             term: sum(1 for terms in tokenized if term in terms)
             for term in set(query_terms)
@@ -207,7 +240,8 @@ class VectorStoreService:
         ):
             if raw_score <= 0 or metadata is None:
                 continue
-            score = raw_score / maximum
+            coverage = len(set(query_terms) & set(self._terms(f'{text} {metadata.get("filename", "")}'))) / max(1, len(set(query_terms)))
+            score = (raw_score / maximum) * coverage ** 0.5
             ranked.append(
                 RetrievedChunk(
                     chunk_id=str(chunk_id),
@@ -218,6 +252,7 @@ class VectorStoreService:
                     relevance_score=score,
                     sheet=str(metadata["sheet"]) if "sheet" in metadata else None,
                     lexical_score=score,
+                    location=metadata.get("location"),
                 )
             )
         ranked.sort(key=lambda chunk: chunk.lexical_score, reverse=True)
@@ -260,6 +295,9 @@ class VectorStoreService:
             "conversa", "da", "das", "de", "do", "dos", "e", "em", "na", "nas",
             "no", "nos", "o", "os", "para", "pergunta", "por", "que", "recente",
             "se", "sobre", "um", "uma", "user",
+            "qual", "quais", "como", "onde", "quanto", "quantos", "quando", "porque",
+            "sao", "esta", "estao", "pode", "poderia", "gostaria", "saber", "documento",
+            "documentos", "explique", "liste", "resuma", "resumo", "principais", "importantes",
         }
         terms: list[str] = []
         for token in re.findall(r"[a-z0-9]+", normalized):
@@ -292,3 +330,11 @@ class VectorStoreService:
 
     def delete_document(self, document_id: int) -> None:
         self.collection.delete(where={"document_id": document_id})
+        _lexical_cache.clear()
+
+    def discard_generation(self, document_id: int, generation: str, *, keep=False):
+        result = self.collection.get(where={"document_id":document_id}, include=["metadatas"])
+        ids = [key for key, meta in zip(result["ids"], result["metadatas"]) if (meta.get("generation") != generation if keep else meta.get("generation") == generation)]
+        if ids:
+            self.collection.delete(ids=ids)
+        _lexical_cache.clear()

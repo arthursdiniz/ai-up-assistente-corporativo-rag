@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -34,6 +34,18 @@ class Document(Base):
         nullable=False,
     )
     error_message: Mapped[str | None] = mapped_column(Text)
+    content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    category: Mapped[str] = mapped_column(String(80), default="Geral", server_default="Geral")
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    processing_stage: Mapped[str] = mapped_column(String(80), default="Aguardando", server_default="Aguardando")
+    progress: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    index_version: Mapped[str | None] = mapped_column(String(255))
+    index_generation: Mapped[str | None] = mapped_column(String(64))
+    sections: Mapped[list | None] = mapped_column(JSON)
+    warnings: Mapped[list | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

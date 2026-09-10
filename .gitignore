@@ -12,6 +12,7 @@ data/uploads/*
 data/chroma/*
 !data/chroma/.gitkeep
 data/backups/*
+data/restore_*/
 !data/backups/.gitkeep
 tmp/
 *.log

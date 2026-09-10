@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.core.permissions import require_roles
 from app.core.security import hash_password
@@ -56,9 +57,15 @@ def update_user(
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     if user.id == current_user.id and payload.active is False:
         raise HTTPException(status_code=409, detail="Você não pode desativar seu próprio usuário.")
+    if user.role == UserRole.IT_ADMIN and (payload.active is False or payload.role not in (None, UserRole.IT_ADMIN)):
+        administrators = list(db.scalars(select(User).where(User.role == UserRole.IT_ADMIN, User.active.is_(True)).order_by(User.id).with_for_update()))
+        if len(administrators) <= 1 and user.active:
+            raise HTTPException(409, "Mantenha pelo menos um administrador ativo.")
     changes = payload.model_dump(exclude_unset=True)
     for field, value in changes.items():
         setattr(user, field, value.strip() if field == "name" else value)
+    if "active" in changes or "role" in changes:
+        user.token_version += 1
     action = "DISABLE_USER" if payload.active is False else "UPDATE_USER"
     audit_service.record(db, action, current_user.id, "user", str(user.id), details={"fields": list(changes)})
     db.commit()

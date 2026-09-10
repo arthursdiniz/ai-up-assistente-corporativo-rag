@@ -9,7 +9,7 @@ Pergunta + histórico → análise → busca híbrida → reranking → Ollama �
 
 ## Estado do projeto
 
-O MVP contém:
+O projeto local contém:
 
 - API FastAPI com Swagger e ReDoc;
 - PostgreSQL via SQLAlchemy 2 e migration Alembic reproduzível;
@@ -68,8 +68,8 @@ No Windows, a opção recomendada é guardar a credencial fora do arquivo. O AI-
 Crie as tabelas exclusivamente pela migration e depois gere os usuários locais:
 
 ```powershell
-alembic upgrade head
-python scripts/seed.py
+.venv\Scripts\python.exe scripts/run_local.py --migrate-only
+.venv\Scripts\python.exe scripts/seed.py
 ```
 
 Usuários de demonstração:
@@ -276,12 +276,28 @@ data/              # uploads e vetores persistentes (não versionados)
 
 ## Limitações conscientes do MVP
 
-- processamento de upload é síncrono; o status é persistido, mas a requisição aguarda a indexação;
+- processamento em segundo plano e jobs de geração são locais e monoprocesso; reinícios exigem nova tentativa dos trabalhos interrompidos;
 - a busca BM25 local examina até `RAG_LEXICAL_SCAN_LIMIT` chunks por usuário e deve migrar para um índice dedicado em bases muito grandes;
-- logout não revoga tokens já emitidos;
+- revogação de tokens é por conta; sair encerra todas as sessões dessa conta;
 - não há compartilhamento de documentos entre usuários;
 - não há Docker, cloud, filas, Redis ou microsserviços;
 - qualidade e velocidade do texto gerado dependem do modelo local e do hardware.
-- os treze casos de avaliação são sintéticos e devem ser ampliados com documentos reais e revisão humana antes de uso em produção.
+- os 20 casos de recuperação e seis fixtures de geração são sintéticos e devem ser ampliados com documentos inéditos e revisão humana antes de uso em produção.
 
 Essas escolhas mantêm o sistema simples, gratuito, defensável no TCC e pronto para evolução posterior.
+
+
+## Evolução de usabilidade e confiabilidade (setembro de 2026)
+
+- Chat com criação automática, rascunhos por conta, busca, favoritos, histórico paginado e navegação móvel.
+- Escopo por conversa, streaming real, cancelamento, retomada e repetição sem duplicar o turno.
+- Biblioteca com upload múltiplo/drop, processamento em segundo plano, progresso por etapa, filtros, categorias, duplicatas, versões e reprocessamento.
+- Visualização de páginas PDF no servidor, extração estruturada de DOCX/XLSX e fontes históricas preservadas.
+- Chunks limitados pelos tokens do modelo; consultas longas divididas em janelas, sem descartar silenciosamente o final.
+- Resumos, comparação, checklist, plano de ação e exportações Markdown/HTML/JSON com fontes.
+- Troca de senha, revogação, limite de login, proteção do último administrador e seed não destrutivo.
+- Diagnóstico, painel de qualidade, backup verificável e validação de migrations em PostgreSQL.
+
+Início habitual: .\scripts\start_ai_up.ps1 (abra o Ollama antes). Primeira instalação com contas demo: acrescente -Demo. A senha demo é somente inicial; contas existentes nunca são redefinidas automaticamente.
+
+Leia docs/OPERACAO.md para recuperação e limites, docs/AVALIACAO_IA.md para os resultados atuais e docs/ROTEIRO_APRESENTACAO.md para a demonstração. O sistema é local, monoprocesso e não oferece bases compartilhadas entre equipes.

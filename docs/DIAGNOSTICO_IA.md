@@ -33,4 +33,6 @@ O efeito visível era uma recusa prematura em perguntas abertas ou, no extremo o
 
 ## Resultado
 
-No corpus local versionado, a nova recuperação alcançou 100% de Hit@3, 100% de acerto da primeira fonte e 100% de resolução das perguntas contextuais. A precisão média das três fontes subiu de 51,28% para 74,36%. Consulte [AVALIACAO_IA.md](AVALIACAO_IA.md) para método e limitações.
+Na avaliação ampliada de 9 de setembro, a busca híbrida alcançou 90% de Hit@3 em 20 casos sintéticos, contra 85% da busca vetorial. A precisão média dos trechos retornados passou de 45,83% para 66,67%. Nos três casos contextuais, a recuperação acertou os três; em dois casos sem resposta, ainda retornou texto semelhante. O teste separado de geração passou em seis fixtures controlados. Consulte [AVALIACAO_IA.md](AVALIACAO_IA.md) para método e limites; esses números não representam precisão universal da IA.
+
+Também foram corrigidos truncamento de chunks pelo limite de tokens, perda de células vazias nas planilhas, ordem de tabelas no DOCX, escopo documental, citações de vários trechos da mesma página e repetição que duplicava turnos. Fontes são evidência para conferência humana, não validação semântica automática.

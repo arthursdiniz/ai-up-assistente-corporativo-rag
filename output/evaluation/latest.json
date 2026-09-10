@@ -1,23 +1,24 @@
 {
-  "generated_at": "2026-09-09T00:16:03.883650+00:00",
+  "generated_at": "2026-09-09T17:20:19.327432+00:00",
   "embedding_provider": "sentence_transformers",
-  "cases": 13,
+  "cases": 20,
   "before": {
-    "retrieval_hit_at_3": 0.9231,
-    "source_precision_at_3": 0.5128,
-    "mean_retrieval_latency_ms": 1.75
+    "retrieval_hit_at_3": 0.85,
+    "source_precision_at_3": 0.4583,
+    "mean_retrieval_latency_ms": 1.4
   },
   "after": {
-    "retrieval_hit_at_3": 1.0,
-    "top_1_accuracy": 1.0,
-    "source_precision_at_3": 0.7436,
+    "retrieval_hit_at_3": 0.9,
+    "top_1_accuracy": 0.9,
+    "source_precision_at_3": 0.6667,
     "context_resolution_rate": 1.0,
-    "correct_refusal_rate": 1.0,
-    "mean_retrieval_latency_ms": 2.93
+    "correct_refusal_rate": 0.3333,
+    "mean_retrieval_latency_ms": 1.65
   },
   "security": {
     "cross_user_chunks_returned": 0,
-    "prompt_injection_guard_present": true
+    "prompt_injection_instruction_present": true,
+    "prompt_injection_behavior_evaluated": false
   },
   "results": [
     {
@@ -29,13 +30,13 @@
       "hybrid_hit_at_3": true,
       "hybrid_top_1_correct": true,
       "baseline_precision_at_3": 0.3333,
-      "hybrid_precision_at_3": 0.3333,
+      "hybrid_precision_at_3": 0.5,
       "baseline_top_score": 0.7794,
       "hybrid_top_score": 0.9966,
       "hybrid_top_semantic_score": 0.7794,
       "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 3.22,
-      "hybrid_latency_ms": 3.55
+      "baseline_latency_ms": 3.25,
+      "hybrid_latency_ms": 2.22
     },
     {
       "id": "sinonimo-descanso",
@@ -48,11 +49,11 @@
       "baseline_precision_at_3": 0.3333,
       "hybrid_precision_at_3": 0.3333,
       "baseline_top_score": 0.5958,
-      "hybrid_top_score": 0.823,
+      "hybrid_top_score": 0.6943,
       "hybrid_top_semantic_score": 0.5958,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.56,
-      "hybrid_latency_ms": 3.1
+      "hybrid_top_lexical_score": 0.6325,
+      "baseline_latency_ms": 1.23,
+      "hybrid_latency_ms": 1.42
     },
     {
       "id": "incidente-prazo",
@@ -65,11 +66,11 @@
       "baseline_precision_at_3": 0.3333,
       "hybrid_precision_at_3": 0.3333,
       "baseline_top_score": 0.573,
-      "hybrid_top_score": 0.7558,
+      "hybrid_top_score": 0.6769,
       "hybrid_top_semantic_score": 0.573,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.91,
-      "hybrid_latency_ms": 2.75
+      "hybrid_top_lexical_score": 0.7746,
+      "baseline_latency_ms": 1.19,
+      "hybrid_latency_ms": 1.88
     },
     {
       "id": "reembolso-valor",
@@ -85,8 +86,8 @@
       "hybrid_top_score": 0.9995,
       "hybrid_top_semantic_score": 0.7839,
       "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.77,
-      "hybrid_latency_ms": 2.58
+      "baseline_latency_ms": 1.29,
+      "hybrid_latency_ms": 1.28
     },
     {
       "id": "codigo-exato",
@@ -102,8 +103,8 @@
       "hybrid_top_score": 1.0,
       "hybrid_top_semantic_score": 0.7685,
       "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.87,
-      "hybrid_latency_ms": 2.74
+      "baseline_latency_ms": 1.11,
+      "hybrid_latency_ms": 1.45
     },
     {
       "id": "contexto-pronome",
@@ -115,12 +116,12 @@
       "hybrid_top_1_correct": true,
       "baseline_precision_at_3": 1.0,
       "hybrid_precision_at_3": 1.0,
-      "baseline_top_score": 0.5864,
-      "hybrid_top_score": 0.774,
-      "hybrid_top_semantic_score": 0.5864,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.58,
-      "hybrid_latency_ms": 2.71
+      "baseline_top_score": 0.5928,
+      "hybrid_top_score": 0.6687,
+      "hybrid_top_semantic_score": 0.5928,
+      "hybrid_top_lexical_score": 0.6667,
+      "baseline_latency_ms": 1.39,
+      "hybrid_latency_ms": 1.79
     },
     {
       "id": "contexto-vago",
@@ -132,12 +133,12 @@
       "hybrid_top_1_correct": true,
       "baseline_precision_at_3": 1.0,
       "hybrid_precision_at_3": 1.0,
-      "baseline_top_score": 0.736,
-      "hybrid_top_score": 0.8729,
-      "hybrid_top_semantic_score": 0.736,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.29,
-      "hybrid_latency_ms": 3.18
+      "baseline_top_score": 0.706,
+      "hybrid_top_score": 0.7348,
+      "hybrid_top_semantic_score": 0.706,
+      "hybrid_top_lexical_score": 0.6455,
+      "baseline_latency_ms": 1.52,
+      "hybrid_latency_ms": 1.98
     },
     {
       "id": "mudanca-assunto",
@@ -148,13 +149,13 @@
       "hybrid_hit_at_3": true,
       "hybrid_top_1_correct": true,
       "baseline_precision_at_3": 0.3333,
-      "hybrid_precision_at_3": 0.3333,
+      "hybrid_precision_at_3": 0.5,
       "baseline_top_score": 0.7735,
-      "hybrid_top_score": 0.9178,
+      "hybrid_top_score": 0.8879,
       "hybrid_top_semantic_score": 0.7735,
-      "hybrid_top_lexical_score": 0.8047,
-      "baseline_latency_ms": 1.71,
-      "hybrid_latency_ms": 2.63
+      "hybrid_top_lexical_score": 0.7193,
+      "baseline_latency_ms": 1.29,
+      "hybrid_latency_ms": 1.71
     },
     {
       "id": "linha-tempo",
@@ -167,11 +168,11 @@
       "baseline_precision_at_3": 0.6667,
       "hybrid_precision_at_3": 1.0,
       "baseline_top_score": 0.5229,
-      "hybrid_top_score": 0.7565,
+      "hybrid_top_score": 0.6086,
       "hybrid_top_semantic_score": 0.5229,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.58,
-      "hybrid_latency_ms": 2.7
+      "hybrid_top_lexical_score": 0.5774,
+      "baseline_latency_ms": 1.48,
+      "hybrid_latency_ms": 1.62
     },
     {
       "id": "ausente",
@@ -187,8 +188,8 @@
       "hybrid_top_score": null,
       "hybrid_top_semantic_score": null,
       "hybrid_top_lexical_score": null,
-      "baseline_latency_ms": 1.67,
-      "hybrid_latency_ms": 3.41
+      "baseline_latency_ms": 1.16,
+      "hybrid_latency_ms": 1.31
     },
     {
       "id": "comparacao-documentos",
@@ -201,11 +202,11 @@
       "baseline_precision_at_3": 1.0,
       "hybrid_precision_at_3": 0.6667,
       "baseline_top_score": 0.622,
-      "hybrid_top_score": 0.802,
+      "hybrid_top_score": 0.6995,
       "hybrid_top_semantic_score": 0.5636,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.51,
-      "hybrid_latency_ms": 2.87
+      "hybrid_top_lexical_score": 0.7071,
+      "baseline_latency_ms": 1.32,
+      "hybrid_latency_ms": 1.89
     },
     {
       "id": "resposta-multiplas-paginas",
@@ -218,11 +219,11 @@
       "baseline_precision_at_3": 0.6667,
       "hybrid_precision_at_3": 0.6667,
       "baseline_top_score": 0.5168,
-      "hybrid_top_score": 0.7716,
+      "hybrid_top_score": 0.6508,
       "hybrid_top_semantic_score": 0.5168,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.58,
-      "hybrid_latency_ms": 3.1
+      "hybrid_top_lexical_score": 0.6547,
+      "baseline_latency_ms": 1.12,
+      "hybrid_latency_ms": 1.47
     },
     {
       "id": "injecao-documental",
@@ -235,11 +236,130 @@
       "baseline_precision_at_3": 0.3333,
       "hybrid_precision_at_3": 1.0,
       "baseline_top_score": 0.4353,
-      "hybrid_top_score": 0.7729,
+      "hybrid_top_score": 0.7187,
       "hybrid_top_semantic_score": 0.4353,
-      "hybrid_top_lexical_score": 1.0,
-      "baseline_latency_ms": 1.53,
-      "hybrid_latency_ms": 2.75
+      "hybrid_top_lexical_score": 0.8452,
+      "baseline_latency_ms": 1.31,
+      "hybrid_latency_ms": 1.8
+    },
+    {
+      "id": "contexto-prazo-eliptico",
+      "category": "context",
+      "intent": "follow_up",
+      "contextualized": true,
+      "baseline_hit_at_3": true,
+      "hybrid_hit_at_3": true,
+      "hybrid_top_1_correct": true,
+      "baseline_precision_at_3": 0.3333,
+      "hybrid_precision_at_3": 0.5,
+      "baseline_top_score": 0.7786,
+      "hybrid_top_score": 0.9193,
+      "hybrid_top_semantic_score": 0.7786,
+      "hybrid_top_lexical_score": 0.7071,
+      "baseline_latency_ms": 1.15,
+      "hybrid_latency_ms": 1.39
+    },
+    {
+      "id": "mudanca-topico-explicito",
+      "category": "topic_change",
+      "intent": "factual",
+      "contextualized": false,
+      "baseline_hit_at_3": true,
+      "hybrid_hit_at_3": true,
+      "hybrid_top_1_correct": true,
+      "baseline_precision_at_3": 0.5,
+      "hybrid_precision_at_3": 1.0,
+      "baseline_top_score": 0.6594,
+      "hybrid_top_score": 0.9317,
+      "hybrid_top_semantic_score": 0.6594,
+      "hybrid_top_lexical_score": 0.866,
+      "baseline_latency_ms": 1.07,
+      "hybrid_latency_ms": 1.41
+    },
+    {
+      "id": "ausente-vale-transporte",
+      "category": "no_answer",
+      "intent": "factual",
+      "contextualized": false,
+      "baseline_hit_at_3": false,
+      "hybrid_hit_at_3": false,
+      "hybrid_top_1_correct": false,
+      "baseline_precision_at_3": 0.0,
+      "hybrid_precision_at_3": 0.0,
+      "baseline_top_score": 0.3274,
+      "hybrid_top_score": 0.5403,
+      "hybrid_top_semantic_score": 0.3274,
+      "hybrid_top_lexical_score": 0.7071,
+      "baseline_latency_ms": 1.61,
+      "hybrid_latency_ms": 1.77
+    },
+    {
+      "id": "ausente-data-fundacao",
+      "category": "no_answer",
+      "intent": "factual",
+      "contextualized": false,
+      "baseline_hit_at_3": false,
+      "hybrid_hit_at_3": false,
+      "hybrid_top_1_correct": false,
+      "baseline_precision_at_3": 0.0,
+      "hybrid_precision_at_3": 0.0,
+      "baseline_top_score": 0.2782,
+      "hybrid_top_score": 0.3706,
+      "hybrid_top_semantic_score": 0.2782,
+      "hybrid_top_lexical_score": 0.4277,
+      "baseline_latency_ms": 1.1,
+      "hybrid_latency_ms": 1.31
+    },
+    {
+      "id": "checklist-ferias",
+      "category": "checklist",
+      "intent": "checklist",
+      "contextualized": false,
+      "baseline_hit_at_3": true,
+      "hybrid_hit_at_3": true,
+      "hybrid_top_1_correct": true,
+      "baseline_precision_at_3": 0.3333,
+      "hybrid_precision_at_3": 0.3333,
+      "baseline_top_score": 0.5978,
+      "hybrid_top_score": 0.682,
+      "hybrid_top_semantic_score": 0.5978,
+      "hybrid_top_lexical_score": 0.5528,
+      "baseline_latency_ms": 1.2,
+      "hybrid_latency_ms": 2.14
+    },
+    {
+      "id": "plano-incidentes",
+      "category": "action_plan",
+      "intent": "action_plan",
+      "contextualized": false,
+      "baseline_hit_at_3": true,
+      "hybrid_hit_at_3": true,
+      "hybrid_top_1_correct": true,
+      "baseline_precision_at_3": 0.3333,
+      "hybrid_precision_at_3": 0.5,
+      "baseline_top_score": 0.5069,
+      "hybrid_top_score": 0.6253,
+      "hybrid_top_semantic_score": 0.5069,
+      "hybrid_top_lexical_score": 0.6547,
+      "baseline_latency_ms": 1.69,
+      "hybrid_latency_ms": 1.51
+    },
+    {
+      "id": "resumo-curto",
+      "category": "summary",
+      "intent": "summary",
+      "contextualized": false,
+      "baseline_hit_at_3": true,
+      "hybrid_hit_at_3": true,
+      "hybrid_top_1_correct": true,
+      "baseline_precision_at_3": 1.0,
+      "hybrid_precision_at_3": 1.0,
+      "baseline_top_score": 0.523,
+      "hybrid_top_score": 0.6358,
+      "hybrid_top_semantic_score": 0.523,
+      "hybrid_top_lexical_score": 0.6547,
+      "baseline_latency_ms": 1.56,
+      "hybrid_latency_ms": 1.63
     }
   ]
 }

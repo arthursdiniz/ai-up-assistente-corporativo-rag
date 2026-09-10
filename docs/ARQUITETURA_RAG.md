@@ -1,57 +1,44 @@
-# Arquitetura RAG do AI-Up
+# Arquitetura do AI-Up
 
-## Visão geral
+## Ingestão
 
-```mermaid
-flowchart LR
-    A[Upload validado] --> B[Extração local / OCR]
-    B --> C[Chunks com página ou planilha]
-    C --> D[Embeddings locais]
-    D --> E[(ChromaDB)]
-    Q[Pergunta + histórico recente] --> F[Análise da tarefa]
-    F --> G[Reescrita contextual quando necessária]
-    G --> H[Busca semântica]
-    G --> I[Busca lexical BM25]
-    E --> H
-    E --> I
-    H --> J[Fusão + deduplicação]
-    I --> J
-    J --> K[Política de suficiência + reranking]
-    K --> L[Ollama local]
-    L --> M[Resposta em Markdown seguro]
-    K --> N[Documento + localização + excerto]
-    M --> O[(PostgreSQL)]
-    N --> O
-```
+Upload validado → registro PostgreSQL → extração em segundo plano → divisão por tokens → embeddings → geração nova de vetores → troca do ponteiro do índice.
 
-## Fluxo de uma pergunta
+O PDF mantém página; OCR parcial preserva texto digital mesmo se uma página falha. O DOCX é percorrido na ordem de parágrafos/tabelas. O XLSX conserva relações de cabeçalho/valor e células vazias. Seções extraídas ficam disponíveis para visualização e tarefas amplas.
 
-1. O analisador identifica a intenção. Uma pergunta explícita usa apenas seu próprio texto; uma continuação recebe até seis mensagens recentes, respeitando o limite de caracteres.
-2. O mesmo `user_id` filtra a busca semântica e a busca lexical dentro do banco vetorial. O filtro ocorre antes da fusão, não apenas na interface.
-3. A busca semântica recupera paráfrases. O BM25 preserva nomes, códigos, datas e números exatos.
-4. Os resultados são combinados com peso configurável, deduplicados e reranqueados. Tarefas amplas favorecem páginas ou planilhas diversas.
-5. A política de suficiência rejeita correspondências fracas. Sem contexto aceito, o provedor retorna a mensagem padronizada de informação insuficiente.
-6. O modelo recebe somente os trechos selecionados, a instrução da tarefa e, quando necessário, o histórico. As fontes persistidas mostram o excerto que sustenta a resposta.
+O limite de chunks considera o tokenizer real (modelo atual: 128 tokens máximos; padrão de chunks: 120 incluindo tokens especiais). Perguntas longas são divididas em janelas e seus vetores combinados. Há sobreposição sem ultrapassar o teto de tokens.
 
-## Decisões de projeto
+## Consulta
 
-| Decisão | Justificativa |
-|---|---|
-| Heurísticas locais para intenção e continuidade | São rápidas, explicáveis e não adicionam custo ou outra chamada ao modelo. |
-| Embeddings + BM25 | Combina significado com correspondência exata. |
-| Reranking local | Melhora a ordem com baixa latência e sem serviço externo. |
-| Ollama | Mantém documentos e prompts na máquina da apresentação. |
-| PostgreSQL + ChromaDB | Separa dados relacionais/auditoria do índice vetorial. |
-| Fontes estruturadas | Torna a resposta auditável por documento, página/planilha e excerto. |
+1. API autentica, verifica proprietário e registra um job com UUID idempotente.
+2. Análise heurística identifica tarefa, continuação, quantidade pedida e formato.
+3. Define escopo: seleção da conversa, arquivos nomeados, fontes da resposta anterior ou documentos ativos do proprietário. Uma nova entidade nomeada não herda automaticamente o tema anterior.
+4. Busca híbrida combina embeddings e BM25, filtrando proprietário, documentos e geração do índice antes de buscar.
+5. Política de relevância e reranking ordenam candidatos. O score é sinal de recuperação, não probabilidade de verdade.
+6. Resumos/checklists/planos/comparações com escopo explícito usam todas as seções desse escopo. Sem seleção, expandem os documentos mais relevantes. Documentos extensos usam sínteses hierárquicas com referências originais e orçamento de contexto, incluindo o tamanho dos rótulos.
+7. Ollama local produz texto em streaming. O histórico ajuda a resolver referências, mas não é evidência documental nova.
+8. As referências citadas selecionam os trechos registrados; sem referências explícitas há correspondência lexical por afirmação. Ausência ou identificadores inválidos geram aviso. Isso não é verificação automática de implicação semântica.
+9. Pergunta e resposta são salvas juntas ao final; Refazer substitui apenas a última resposta. Cancelar impede o commit. A interface recebe estágios reais e deltas via SSE.
 
-## Segurança e isolamento
+## Persistência e recuperação
 
-- chats, mensagens, documentos e feedback verificam o proprietário no backend;
-- as duas rotas de recuperação aplicam `user_id` no ChromaDB;
-- conteúdo de documentos é tratado como dado não confiável e não pode substituir as instruções do sistema;
-- o frontend constrói Markdown com nós DOM e `textContent`, sem injetar HTML retornado pelo modelo;
-- segredos permanecem nas variáveis de ambiente; logs de auditoria não registram senhas nem conteúdo integral dos documentos.
+PostgreSQL: usuários, documentos/seções/versões, conversas, mensagens, snapshots de fontes, jobs e auditoria. Chroma: vetores e metadados. Arquivos originais ficam em armazenamento local.
 
-## Configuração de recuperação
+Reprocessamento prepara uma nova geração de vetores antes da substituição. A limpeza ocorre depois do commit; falhas preservam a geração anterior. Excluir um documento não apaga trechos já citados: a FK vira nula e o snapshot do nome/excerto permanece.
 
-Os principais controles são `RAG_CANDIDATE_POOL`, `RAG_SEMANTIC_WEIGHT`, `RAG_MIN_RELEVANCE`, `RAG_SEMANTIC_ONLY_MIN_RELEVANCE`, `RAG_BROAD_TOP_K` e `RAG_LEXICAL_SCAN_LIMIT`. Os padrões usados na avaliação estão no `.env.example`.
+Jobs têm estado persistido e transmissão parcial em memória. Reconexão repete o texto acumulado; a interface reconstrói a resposta desde o início. Um reinício interrompe o job e permite recuperar a pergunta. O cancelamento é cooperativo: o modelo pode permanecer ocupado durante uma chamada bloqueante até devolver controle.
+
+## Segurança
+
+- Proprietário validado em todas as operações de documentos, conversas, fontes e gerações.
+- JWT contém versão revogável; logout, troca de senha e mudança de permissões invalidam sessões.
+- Último administrador ativo não pode ser rebaixado ou desativado.
+- Limitador de login em memória com limites por IP/identidade.
+- Conteúdo dos documentos é delimitado e o prompt manda ignorar instruções nele; isto reduz risco, não garante imunidade a injeção.
+- Markdown é convertido em nós DOM seguros, sem inserir HTML do modelo.
+- Ollama é restrito a loopback e modelos locais. Downloads iniciais de dependências/modelos exigem internet; o processamento documental não envia prompts a APIs externas.
+- Backups e exportações não são criptografados pelo aplicativo.
+
+## Escala e fronteiras
+
+Aplicação local, um processo Uvicorn, até dois workers de geração por padrão e um escritor de índice. Não suporta coordenação de jobs entre réplicas. BM25 percorre/cacheia até RAG_LEXICAL_SCAN_LIMIT trechos, padrão 5000. Avaliar filas externas, índice lexical próprio, quotas e governança antes de exposição organizacional.

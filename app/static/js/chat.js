@@ -1,390 +1,400 @@
 (() => {
-const { apiFetch, loadCurrentUser, showToast } = window.aiup;
-let currentChatId = null;
-let isBusy = false;
-let suggestionQuestions = [
-  "Resuma os pontos mais importantes.",
-  "Quais prazos e valores aparecem?",
-  "Há riscos ou obrigações relevantes?",
-];
-
-const list = document.querySelector("#chat-list");
-const messages = document.querySelector("#messages");
-const title = document.querySelector("#chat-title");
-const form = document.querySelector("#message-form");
-const input = document.querySelector("#message-input");
-const composerHint = document.querySelector("#composer-hint");
-const renameDialog = document.querySelector("#rename-dialog");
-const renameForm = document.querySelector("#rename-form");
-const renameInput = document.querySelector("#rename-input");
-const deleteDialog = document.querySelector("#delete-dialog");
-
-function appendInlineMarkdown(parent, text) {
-  const pattern = /(\*\*([^*]+)\*\*|`([^`]+)`)/g;
+const {apiFetch, apiRequest, loadCurrentUser, showToast, downloadFile} = window.aiup;
+const $ = selector => document.querySelector(selector);
+const messages = $("#messages"), input = $("#message-input"), form = $("#message-form");
+let user, current = null, selected = null, documents = [], chats = [], messageHistory = [];
+let sequence = 0, busy = false, streamController = null, job = null, searchTimer, documentTimer;
+let feedbackTarget = null, chatOffset = 0;
+const storageKey = suffix => "aiup:" + user.id + ":" + suffix;
+const draftKey = () => storageKey("draft:" + (current?.id || "new"));
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function button(text, action, className = "text-button") {
+  const node = element("button", className, text);
+  node.type = "button"; node.addEventListener("click", action); return node;
+}
+function inline(parent, text, sourcePrefix = "") {
+  const regex = /(\*\*([^*]+)\*\*|\x60([^\x60]+)\x60|\[(\d+)\])/g;
   let position = 0;
-  for (const match of text.matchAll(pattern)) {
-    if (match.index > position) parent.append(document.createTextNode(text.slice(position, match.index)));
-    const element = document.createElement(match[2] ? "strong" : "code");
-    element.textContent = match[2] || match[3];
-    parent.append(element);
+  for (const match of text.matchAll(regex)) {
+    parent.append(document.createTextNode(text.slice(position, match.index)));
+    if (match[4] && sourcePrefix) {
+      const link = element("a", "citation-link", "[" + match[4] + "]");
+      link.href = "#" + sourcePrefix + match[4];
+      link.addEventListener("click", event => {
+        const target = document.getElementById(sourcePrefix + match[4]);
+        if (target) { event.preventDefault(); target.open = true; target.scrollIntoView({block:"nearest", behavior:"smooth"}); target.querySelector("summary")?.focus(); }
+      });
+      parent.append(link);
+    } else parent.append(element(match[2] ? "strong" : match[3] ? "code" : "span", "", match[2] || match[3] || match[0]));
     position = match.index + match[0].length;
   }
-  if (position < text.length) parent.append(document.createTextNode(text.slice(position)));
+  parent.append(document.createTextNode(text.slice(position)));
 }
-
-function markdownNode(text) {
-  const container = document.createElement("div");
-  container.className = "message-content";
-  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
-  let index = 0;
-  while (index < lines.length) {
+function markdown(text, prefix = "") {
+  const box = element("div", "message-content");
+  const lines = String(text || "").replace(/\r\n/g,"\n").split("\n");
+  for (let index = 0; index < lines.length;) {
     const line = lines[index].trim();
-    if (!line) { index += 1; continue; }
-    const unordered = line.match(/^[-*]\s+(.+)/);
-    const ordered = line.match(/^\d+[.)]\s+(.+)/);
-    if (unordered || ordered) {
-      const orderedList = Boolean(ordered);
-      const listNode = document.createElement(orderedList ? "ol" : "ul");
-      while (index < lines.length) {
-        const candidate = lines[index].trim();
-        const itemMatch = candidate.match(orderedList ? /^\d+[.)]\s+(.+)/ : /^[-*]\s+(.+)/);
-        if (!itemMatch) break;
-        const item = document.createElement("li");
-        appendInlineMarkdown(item, itemMatch[1]);
-        listNode.append(item);
-        index += 1;
+    if (!line) { index++; continue; }
+    if (line.includes("|") && index + 1 < lines.length && /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(lines[index+1])) {
+      const wrapper = element("div", "table-scroll");
+      const table = element("table", "answer-table"), head = document.createElement("thead"), body = document.createElement("tbody");
+      const cells = value => value.replace(/^\s*\||\|\s*$/g,"").split("|").map(cell => cell.trim());
+      const header = document.createElement("tr");
+      cells(line).forEach(value => { const cell = document.createElement("th"); inline(cell,value,prefix); header.append(cell); });
+      head.append(header); index += 2;
+      while (index < lines.length && lines[index].includes("|")) {
+        const row = document.createElement("tr");
+        cells(lines[index++]).forEach(value => { const cell = document.createElement("td"); inline(cell,value,prefix); row.append(cell); }); body.append(row);
       }
-      container.append(listNode);
-      continue;
+      table.append(head,body); wrapper.append(table); box.append(wrapper); continue;
     }
-    const heading = line.match(/^(#{1,3})\s+(.+)/);
-    if (heading) {
-      const headingNode = document.createElement("h4");
-      appendInlineMarkdown(headingNode, heading[2]);
-      container.append(headingNode);
-      index += 1;
-      continue;
+    const listMatch = line.match(/^(?:[-*]|\d+[.)])\s+(.+)/);
+    if (listMatch) {
+      const ordered = /^\d/.test(line), list = document.createElement(ordered ? "ol" : "ul");
+      while (index < lines.length) {
+        const match = lines[index].trim().match(ordered ? /^\d+[.)]\s+(.+)/ : /^[-*]\s+(.+)/);
+        if (!match) break;
+        const item = document.createElement("li"); inline(item,match[1],prefix); list.append(item); index++;
+      }
+      box.append(list); continue;
     }
-    const paragraphLines = [line];
-    index += 1;
-    while (index < lines.length) {
-      const candidate = lines[index].trim();
-      if (!candidate || /^[-*]\s+/.test(candidate) || /^\d+[.)]\s+/.test(candidate) || /^#{1,3}\s+/.test(candidate)) break;
-      paragraphLines.push(candidate);
-      index += 1;
-    }
-    const paragraph = document.createElement("p");
-    appendInlineMarkdown(paragraph, paragraphLines.join(" "));
-    container.append(paragraph);
+    const heading = line.match(/^#{1,6}\s+(.+)/);
+    const paragraph = document.createElement(heading ? "h4" : "p");
+    inline(paragraph,heading ? heading[1] : line,prefix); box.append(paragraph); index++;
   }
-  return container;
+  return box;
 }
-
-function appendHighlightedEvidence(parent, text, answer) {
-  const stopwords = new Set(["como", "com", "das", "dos", "esta", "este", "isso", "mais", "para", "pela", "pelo", "qual", "que", "uma"]);
-  const words = String(answer || "").match(/[\p{L}\p{N}][\p{L}\p{N}.,%-]*/gu) || [];
-  const terms = [...new Set(words.map((word) => word.replace(/[.,]$/, "")).filter((word) => word.length >= 4 && !stopwords.has(word.toLocaleLowerCase("pt-BR"))))]
-    .filter((word) => String(text).toLocaleLowerCase("pt-BR").includes(word.toLocaleLowerCase("pt-BR")))
-    .sort((left, right) => right.length - left.length)
-    .slice(0, 10);
-  if (!terms.length) { parent.textContent = text; return; }
-  const escaped = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`(${escaped.join("|")})`, "giu");
-  let position = 0;
-  for (const match of String(text).matchAll(pattern)) {
-    if (match.index > position) parent.append(document.createTextNode(text.slice(position, match.index)));
-    const mark = document.createElement("mark");
-    mark.textContent = match[0];
-    parent.append(mark);
-    position = match.index + match[0].length;
-  }
-  if (position < text.length) parent.append(document.createTextNode(text.slice(position)));
-}
-
-function suggestionButton(question) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "suggestion-chip";
-  button.textContent = question;
-  button.addEventListener("click", () => {
-    input.value = question;
-    input.focus();
-  });
-  return button;
-}
-
-function emptyState(text = "Crie uma conversa e envie documentos para começar.") {
-  messages.replaceChildren();
-  const box = document.createElement("div");
-  box.className = "empty-state";
-  const mark = document.createElement("div");
-  mark.className = "brand-mark";
-  mark.textContent = "A↑";
-  const heading = document.createElement("h2");
-  heading.textContent = "Converse com seus documentos.";
-  const copy = document.createElement("p");
-  copy.textContent = text;
-  const suggestions = document.createElement("div");
-  suggestions.className = "suggestion-list";
-  suggestionQuestions.forEach((question) => suggestions.append(suggestionButton(question)));
-  box.append(mark, heading, copy, suggestions);
-  messages.append(box);
-}
-
-function sourceNode(source, answer) {
-  const details = document.createElement("details");
-  details.className = "source-card";
-  const summary = document.createElement("summary");
-  const location = source.page
-    ? `página ${source.page}`
-    : (source.sheet ? `planilha ${source.sheet}` : "documento");
-  summary.textContent = `${source.document} — ${location}`;
-  details.append(summary);
-  if (source.excerpt) {
-    const label = document.createElement("small");
-    label.textContent = "EVIDÊNCIA UTILIZADA";
-    const excerpt = document.createElement("p");
-    appendHighlightedEvidence(excerpt, source.excerpt, answer);
-    details.append(label, excerpt);
-  }
+function sourceNode(source, index, messageId) {
+  const details = element("details", "source-card");
+  details.id = "source-" + messageId + "-" + (source.citation || index);
+  const location = source.location || (source.page ? "página " + source.page : source.sheet || "documento");
+  details.append(element("summary", "", "[" + (source.citation || index) + "] " + source.document + " — " + location));
+  details.append(element("p", "", source.excerpt || "Excerto não registrado nesta resposta antiga."));
+  if (source.document_id) {
+    const link = element("a", "text-button source-open", "Abrir documento e conferir");
+    link.href = "/document.html?id=" + source.document_id + (source.page ? "&page=" + source.page : "");
+    link.target = "_blank"; link.rel = "noopener"; details.append(link);
+  } else details.append(element("small", "", "Original removido; evidência histórica preservada."));
   return details;
 }
-
-async function copyAnswer(content, button) {
-  try {
-    await navigator.clipboard.writeText(content);
-    button.textContent = "Copiado";
-    window.setTimeout(() => { button.textContent = "Copiar"; }, 1600);
-  } catch {
-    showToast("Não foi possível copiar automaticamente.", "error");
-  }
-}
-
-async function rateAnswer(messageId, feedback, button, actions) {
-  try {
-    await apiFetch(`/api/chats/${currentChatId}/messages/${messageId}/feedback`, {
-      method: "PATCH",
-      body: JSON.stringify({ feedback }),
-    });
-    actions.querySelectorAll("[data-feedback]").forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    showToast("Obrigado pelo feedback.", "success");
-  } catch (reason) { showToast(reason.message, "error"); }
-}
-
-function messageNode(message, previousUserQuestion = null) {
-  const article = document.createElement("article");
-  article.className = `message ${message.role.toLowerCase()}`;
-  const label = document.createElement("strong");
-  label.textContent = message.role === "USER" ? "Você" : "AI-Up";
-  article.append(label, markdownNode(message.content));
-
+function messageNode(message, previousQuestion, latest) {
+  const article = element("article", "message " + message.role.toLowerCase());
+  article.append(element("strong", "", message.role === "USER" ? "Você" : "AI-Up"));
+  article.append(markdown(message.content, "source-" + message.id + "-"));
+  if (message.metrics?.citation_warning) article.append(element("p","warning-text",message.metrics.citation_warning));
+  if (message.metrics?.coverage === "retrieved_excerpts") article.append(element("small","warning-text","Síntese dos trechos encontrados; não é uma leitura integral de todos os arquivos."));
   if (message.sources?.length) {
-    const sourceSection = document.createElement("section");
-    sourceSection.className = "source-section";
-    const sourceLabel = document.createElement("span");
-    sourceLabel.className = "source-label";
-    sourceLabel.textContent = message.sources.length === 1 ? "1 fonte verificável" : `${message.sources.length} fontes verificáveis`;
-    const sourceList = document.createElement("div");
-    sourceList.className = "source-list";
-    message.sources.forEach((source) => sourceList.append(sourceNode(source, message.content)));
-    sourceSection.append(sourceLabel, sourceList);
-    article.append(sourceSection);
+    const sources = element("section", "source-section");
+    sources.append(element("span", "source-label", "Trechos para conferência"));
+    message.sources.forEach((source, index) => sources.append(sourceNode(source, index + 1, message.id)));
+    article.append(sources);
   }
-
   if (message.role === "ASSISTANT" && message.id) {
-    const actions = document.createElement("div");
-    actions.className = "message-actions";
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.textContent = "Copiar";
-    copy.addEventListener("click", () => copyAnswer(message.content, copy));
-    actions.append(copy);
-    if (previousUserQuestion) {
-      const retry = document.createElement("button");
-      retry.type = "button";
-      retry.textContent = "Tentar novamente";
-      retry.addEventListener("click", () => askQuestion(previousUserQuestion));
-      actions.append(retry);
-    }
-    [[1, "Útil", "👍"], [-1, "Não foi útil", "👎"]].forEach(([value, name, icon]) => {
-      const rate = document.createElement("button");
-      rate.type = "button";
-      rate.dataset.feedback = String(value);
-      rate.textContent = icon;
-      rate.title = name;
-      rate.setAttribute("aria-label", name);
-      if (message.feedback === value) rate.classList.add("active");
-      rate.addEventListener("click", () => rateAnswer(message.id, value, rate, actions));
-      actions.append(rate);
-    });
+    const actions = element("div", "message-actions");
+    actions.append(button("Copiar", async () => {
+      try { await navigator.clipboard.writeText(message.content); showToast("Resposta copiada.", "success"); }
+      catch { showToast("Selecione a resposta e copie com Ctrl+C.", "error"); }
+    }));
+    if (latest && previousQuestion) actions.append(button("Refazer resposta", () => ask(previousQuestion, message.id)));
+    actions.append(button("👍 Útil", () => rate(message.id, 1), message.feedback === 1 ? "active" : ""));
+    actions.append(button("👎 Melhorar", () => { feedbackTarget = message.id; $("#feedback-comment").value = ""; $("#feedback-dialog").showModal(); }, message.feedback === -1 ? "active" : ""));
     article.append(actions);
   }
   return article;
 }
-
-function pendingNode() {
-  const article = document.createElement("article");
-  article.className = "message assistant pending-message";
-  const label = document.createElement("strong");
-  label.textContent = "AI-Up";
-  const row = document.createElement("div");
-  row.className = "thinking-row";
-  const spinner = document.createElement("span");
-  spinner.className = "thinking-spinner";
-  const status = document.createElement("span");
-  status.textContent = "Interpretando sua pergunta…";
-  row.append(spinner, status);
-  article.append(label, row);
-  return { article, status };
+function emptyState() {
+  const box = element("div", "empty-state");
+  box.append(element("div","brand-mark","A↑"), element("h2","","O que você precisa descobrir?"));
+  const ready = documents.filter(item => item.status === "READY" && !item.archived);
+  box.append(element("p","",ready.length ? "Selecione os documentos e faça sua pergunta. A conversa será criada ao enviar." : "Comece enviando um documento. Depois, peça uma resposta ou transforme as informações em algo útil."));
+  box.append(button("＋ Enviar documentos", () => $("#chat-file-input").click(), "button secondary"));
+  const suggestions = element("div","suggestion-list");
+  ["Resuma em cinco tópicos.", "Liste os prazos e valores importantes.", "Monte um checklist das obrigações.", "Monte um plano de ação com responsáveis e prazos.", "Compare os documentos selecionados em uma tabela."].forEach(question => suggestions.append(button(question, () => { input.value = question; saveDraft(); input.focus(); resize(); }, "suggestion-chip")));
+  box.append(suggestions); messages.append(box);
 }
-
-function setBusy(value) {
-  isBusy = value;
-  input.disabled = value;
-  form.querySelector("button[type='submit']").disabled = value;
-  composerHint.textContent = value
-    ? "Processamento local em andamento — seus documentos não saem desta máquina."
-    : "O AI-Up responde somente com base nos trechos recuperados.";
-}
-
-async function loadSuggestionQuestions() {
-  try {
-    const documents = await apiFetch("/api/documents");
-    const ready = documents.find((document) => document.status === "READY");
-    if (!ready) return;
-    const result = await apiFetch(`/api/documents/${ready.id}/suggestions`);
-    if (Array.isArray(result.suggestions) && result.suggestions.length) suggestionQuestions = result.suggestions.slice(0, 3);
-  } catch {
-    // Sugestões genéricas continuam disponíveis se a lista de documentos falhar.
-  }
-}
-
-function isNearConversationEnd() {
-  return messages.scrollHeight - messages.scrollTop - messages.clientHeight < 120;
-}
-
-async function loadChats(preferredId = currentChatId, scrollToEnd = true, restoreScrollTop = null) {
-  const chats = await apiFetch("/api/chats");
-  list.replaceChildren();
-  chats.forEach((chat) => {
-    const button = document.createElement("button");
-    button.className = `chat-item ${chat.id === preferredId ? "active" : ""}`;
-    button.dataset.chatId = String(chat.id);
-    button.textContent = chat.title;
-    button.addEventListener("click", () => { if (!isBusy) selectChat(chat.id); });
-    list.append(button);
-  });
-  if (preferredId && chats.some((chat) => chat.id === preferredId)) await selectChat(preferredId, false, scrollToEnd, restoreScrollTop);
-  else if (chats.length) await selectChat(chats[0].id, false, scrollToEnd, restoreScrollTop);
-  else { currentChatId = null; title.textContent = "Selecione uma conversa"; emptyState(); }
-}
-
-async function selectChat(chatId, refreshList = true, scrollToEnd = true, restoreScrollTop = null) {
-  currentChatId = chatId;
-  const chat = await apiFetch(`/api/chats/${chatId}`);
-  title.textContent = chat.title;
+function renderMessages(restore = false) {
+  const oldHeight = messages.scrollHeight, oldTop = messages.scrollTop;
   messages.replaceChildren();
-  if (!chat.messages.length) emptyState("Faça uma pergunta direta, peça um resumo ou explore riscos e prazos.");
-  else {
-    let previousUserQuestion = null;
-    chat.messages.forEach((message) => {
-      messages.append(messageNode(message, previousUserQuestion));
-      if (message.role === "USER") previousUserQuestion = message.content;
-    });
-  }
-  if (scrollToEnd) messages.scrollTop = messages.scrollHeight;
-  else if (restoreScrollTop !== null) messages.scrollTop = restoreScrollTop;
-  if (refreshList) document.querySelectorAll(".chat-item").forEach((item) => item.classList.toggle("active", item.dataset.chatId === String(chatId)));
+  if (!messageHistory.length) emptyState();
+  let previous = null;
+  messageHistory.forEach((message,index) => {
+    messages.append(messageNode(message,previous,index === messageHistory.length - 1));
+    if (message.role === "USER") previous = message.content;
+  });
+  if (current && messageHistory.length < current.total_messages) messages.prepend(button("Carregar mensagens anteriores", loadOlder, "button secondary"));
+  if (restore) messages.scrollTop = oldTop + messages.scrollHeight - oldHeight;
+  else messages.scrollTop = messages.scrollHeight;
 }
-
-async function askQuestion(question) {
-  if (!currentChatId) { showToast("Crie uma conversa primeiro.", "error"); return; }
-  if (!question || isBusy) return;
-  const requestedChatId = currentChatId;
-  messages.querySelector(".empty-state")?.remove();
-  messages.append(messageNode({ role: "USER", content: question }));
-  const pending = pendingNode();
-  messages.append(pending.article);
-  messages.scrollTop = messages.scrollHeight;
+function updateScopeLabel() {
+  const scope = current ? current.document_ids : selected;
+  $("#select-scope").textContent = scope === null ? "Todos os documentos ativos" : scope.length + " documento(s) selecionado(s)";
+}
+function setBusy(value) {
+  busy = value;
+  form.querySelector('[type="submit"]').classList.toggle("hidden",value);
+  $("#cancel-answer").classList.toggle("hidden",!value);
+  input.disabled = value;
+  $("#composer-hint").textContent = value ? "Geração local em andamento. Você pode parar a resposta ou mudar de conversa." : "Confira os trechos citados. Enter envia; Shift+Enter quebra a linha.";
+}
+function closeMobileMenu() {
+  document.querySelector(".sidebar")?.classList.remove("mobile-open");
+  document.querySelector(".mobile-menu")?.setAttribute("aria-expanded","false");
+  document.querySelector(".mobile-menu")?.setAttribute("aria-label","Abrir navegação");
+}
+function saveDraft() { if (user) localStorage.setItem(draftKey(), input.value); }
+function resize() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; }
+function restoreDraft() { input.value = localStorage.getItem(draftKey()) || ""; resize(); }
+async function loadChats(append = false) {
+  const offset = append ? chatOffset : 0;
+  const result = await apiFetch("/api/chats?q=" + encodeURIComponent($("#chat-search").value) + "&offset=" + offset + "&limit=50");
+  chats = append ? chats.concat(result) : result; chatOffset = chats.length;
+  $("#more-chats").classList.toggle("hidden",result.length < 50);
+  $("#chat-list").replaceChildren();
+  for (const chat of chats) $("#chat-list").append(button((chat.pinned ? "★ " : "") + chat.title, () => selectChat(chat.id), "chat-item" + (chat.id === current?.id ? " active" : "")));
+}
+async function selectChat(id) {
+  saveDraft(); sequence++; const mySequence = sequence;
+  streamController?.abort(); job = null; setBusy(false);
+  try {
+    const result = await apiFetch("/api/chats/" + id);
+    if (mySequence !== sequence) return;
+    current = result; messageHistory = result.messages;
+    localStorage.setItem(storageKey("last-chat"),String(id));
+    $("#chat-title").textContent = current.title;
+    $("#pin-chat").textContent = current.pinned ? "★" : "☆";
+    $("#pin-chat").setAttribute("aria-pressed",String(current.pinned));
+    updateScopeLabel(); renderMessages(); restoreDraft();
+    $("#resume-answer").classList.add("hidden");
+    closeMobileMenu();
+    await loadChats();
+    if (mySequence !== sequence) return;
+    const active = await apiFetch("/api/chats/" + id + "/generations");
+    if (mySequence === sequence && active.length) follow(active[0],mySequence);
+    else if (mySequence === sequence) {
+      const saved = sessionStorage.getItem(storageKey("request:" + id));
+      if (saved) {
+        try {
+          const pending = JSON.parse(saved);
+          const last = await apiFetch("/api/chats/" + id + "/generations/" + pending.request_id);
+          if (mySequence !== sequence) return;
+          if (["error","cancelled"].includes(last.status)) { input.value = last.question; saveDraft(); showToast(last.error || "Pergunta recuperada após interrupção.","info"); }
+          sessionStorage.removeItem(storageKey("request:" + id));
+        } catch { /* A POST with no acknowledgement can be retried with the same request ID. */ }
+      }
+    }
+  } catch (error) { if (mySequence === sequence) showToast(error.message,"error"); }
+}
+function newChat() {
+  closeMobileMenu();
+  saveDraft(); sequence++; streamController?.abort(); current = null; job = null;
+  messageHistory = []; selected = null; setBusy(false);
+  $("#resume-answer").classList.add("hidden");
+  localStorage.removeItem(storageKey("last-chat"));
+  $("#chat-title").textContent = "Nova conversa"; $("#pin-chat").textContent = "☆";
+  updateScopeLabel(); renderMessages(); restoreDraft(); input.focus();
+}
+async function loadOlder() {
+  if (!current) return;
+  const id = current.id, mySequence = sequence;
+  const result = await apiFetch("/api/chats/" + id + "?offset=" + messageHistory.length + "&limit=100");
+  if (mySequence !== sequence) return;
+  messageHistory = result.messages.concat(messageHistory); renderMessages(true);
+}
+function pendingNode() {
+  const article = element("article","message assistant pending-message");
+  article.append(element("strong","","AI-Up"));
+  const stage = element("p","thinking-row","Na fila"); stage.setAttribute("role","status");
+  const content = element("div","stream-content");
+  article.append(stage,content); messages.append(article); messages.scrollTop = messages.scrollHeight;
+  return {article,stage,content};
+}
+async function ask(question, retryMessageId = null) {
+  if (busy || question.trim().length < 2) return;
+  question = question.trim(); saveDraft();
   setBusy(true);
-  const states = ["Buscando evidências nos documentos…", "Selecionando os trechos mais relevantes…", "Redigindo uma resposta verificável…"];
-  let stateIndex = 0;
-  const progressTimer = window.setInterval(() => {
-    pending.status.textContent = states[Math.min(stateIndex, states.length - 1)];
-    stateIndex += 1;
-  }, 4500);
+  const submittedSequence = sequence;
   try {
-    await apiFetch(`/api/chats/${requestedChatId}/messages`, {
-      method: "POST",
-      body: JSON.stringify({ message: question }),
-      timeoutMs: 180000,
-    });
-    const keepReadingPosition = !isNearConversationEnd();
-    const readingPosition = messages.scrollTop;
-    await loadChats(requestedChatId, !keepReadingPosition, readingPosition);
-  } catch (reason) {
-    pending.article.remove();
-    showToast(reason.message, "error");
-    input.value = question;
-  } finally {
-    window.clearInterval(progressTimer);
-    setBusy(false);
-    input.focus();
+    if (!current) {
+      const created = await apiFetch("/api/chats", {method:"POST",body:JSON.stringify({title:"Nova conversa", document_ids:selected})});
+      if (submittedSequence !== sequence) { await loadChats(); return; }
+      current = created;
+      localStorage.removeItem(storageKey("draft:new"));
+      localStorage.setItem(storageKey("last-chat"), String(current.id));
+    }
+    const pendingKey = storageKey("request:" + current.id);
+    let request; try { request = JSON.parse(sessionStorage.getItem(pendingKey)); } catch {}
+    if (!request || request.message !== question || request.retry_message_id !== retryMessageId) {
+      request = {message:question, request_id:crypto.randomUUID(), retry_message_id:retryMessageId};
+      sessionStorage.setItem(pendingKey,JSON.stringify(request));
+    }
+    setBusy(true);
+    const submittedChat = current.id, mySequence = sequence;
+    const response = await apiFetch("/api/chats/" + submittedChat + "/generations",{method:"POST", body:JSON.stringify(request)});
+    if (mySequence !== sequence) return;
+    input.value = ""; localStorage.removeItem(draftKey()); resize();
+    await follow(response,mySequence);
+  } catch (error) {
+    if (submittedSequence !== sequence) return;
+    setBusy(false); input.value = question; saveDraft(); showToast(error.message,"error");
+    $("#resume-answer").classList.remove("hidden");
   }
 }
-
-document.querySelector("#new-chat").addEventListener("click", async () => {
-  if (isBusy) return;
+async function follow(generation,mySequence) {
+  if (mySequence !== sequence || !current) return;
+  job = generation; const chatId = current.id;
+  setBusy(true); $("#resume-answer").classList.add("hidden"); renderMessages();
+  messages.querySelector(".empty-state")?.remove();
+  if (!generation.retry_message_id) messages.append(messageNode({role:"USER",content:generation.question}));
+  const pending = pendingNode(); let text = "";
+  const controller = new AbortController(); streamController = controller;
   try {
-    const chat = await apiFetch("/api/chats", { method: "POST", body: JSON.stringify({ title: "Nova conversa" }) });
-    await loadChats(chat.id);
-    input.focus();
-  } catch (reason) { showToast(reason.message, "error"); }
-});
-
-document.querySelector("#rename-chat").addEventListener("click", () => {
-  if (!currentChatId || isBusy) return;
-  renameInput.value = title.textContent;
-  renameDialog.showModal();
-  renameInput.focus();
-  renameInput.select();
-});
-
-document.querySelector("#cancel-rename").addEventListener("click", () => renameDialog.close());
-renameForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const newTitle = renameInput.value.trim();
-  if (!currentChatId || !newTitle) return;
-  try { await apiFetch(`/api/chats/${currentChatId}`, { method: "PATCH", body: JSON.stringify({ title: newTitle }) }); renameDialog.close(); await loadChats(currentChatId); }
-  catch (reason) { showToast(reason.message, "error"); }
-});
-
-document.querySelector("#delete-chat").addEventListener("click", () => {
-  if (currentChatId && !isBusy) deleteDialog.showModal();
-});
-document.querySelector("#cancel-delete").addEventListener("click", () => deleteDialog.close());
-document.querySelector("#confirm-delete").addEventListener("click", async () => {
-  if (!currentChatId) return;
-  try { await apiFetch(`/api/chats/${currentChatId}`, { method: "DELETE" }); currentChatId = null; await loadChats(); }
-  catch (reason) { showToast(reason.message, "error"); }
-  finally { deleteDialog.close(); }
-});
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const question = input.value.trim();
-  if (!question) return;
-  input.value = "";
-  await askQuestion(question);
-});
-
-input.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    form.requestSubmit();
+    const response = await apiRequest("/api/chats/" + chatId + "/generations/" + generation.id + "/events",{timeoutMs:0,signal:controller.signal});
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    let buffer = "", terminal = null;
+    while (mySequence === sequence) {
+      const {value,done} = await reader.read(); if (done) break;
+      buffer += decoder.decode(value,{stream:true}); let boundary;
+      while ((boundary = buffer.indexOf("\n\n")) >= 0) {
+        const block = buffer.slice(0,boundary); buffer = buffer.slice(boundary+2);
+        if (!block.startsWith("data: ")) continue;
+        const event = JSON.parse(block.slice(6));
+        if (mySequence !== sequence) { reader.cancel(); return; }
+        if (event.type === "stage") pending.stage.textContent = event.data;
+        if (event.type === "delta") {
+          const nearEnd = messages.scrollHeight - messages.scrollTop - messages.clientHeight <= 8;
+          text += event.data; pending.content.replaceChildren(markdown(text));
+          if (nearEnd) messages.scrollTop = messages.scrollHeight;
+        }
+        if (["done","error","cancelled"].includes(event.type)) terminal = event;
+      }
+    }
+    if (mySequence !== sequence) return;
+    if (!terminal) throw new Error("Conexão interrompida. Use Retomar resposta para acompanhar o processamento.");
+    sessionStorage.removeItem(storageKey("request:" + chatId)); job = null; setBusy(false);
+    if (terminal.type !== "done") {
+      input.value = generation.question; saveDraft();
+      showToast(terminal.data.error || "Resposta cancelada. Sua pergunta foi preservada.",terminal.type === "error" ? "error" : "info");
+    }
+    const readingTop = messages.scrollTop, nearEnd = messages.scrollHeight - messages.scrollTop - messages.clientHeight <= 8;
+    const result = await apiFetch("/api/chats/" + chatId); if (mySequence !== sequence) return;
+    current = result; messageHistory = result.messages; renderMessages();
+    if (!nearEnd) messages.scrollTop = readingTop;
+    $("#chat-title").textContent = current.title; await loadChats();
+  } catch (error) {
+    if (mySequence !== sequence || controller.signal.aborted) return;
+    pending.stage.textContent = "Conexão interrompida"; setBusy(false);
+    $("#resume-answer").classList.remove("hidden"); input.value = generation.question; saveDraft(); showToast(error.message,"error");
   }
+}
+async function rate(id, value, reason = null) {
+  if (!current) return;
+  try {
+    await apiFetch("/api/chats/" + current.id + "/messages/" + id + "/feedback",{method:"PATCH",body:JSON.stringify({feedback:value,reason})});
+    const message = messageHistory.find(item => item.id === id);
+    if (message) { message.feedback = value; message.feedback_reason = reason; }
+    const scroll = messages.scrollTop; renderMessages(); messages.scrollTop = scroll; showToast("Avaliação registrada.","success");
+  } catch (error) { showToast(error.message,"error"); }
+}
+async function loadDocuments() {
+  documents = await apiFetch("/api/documents?limit=500");
+  if (documents.some(item => ["UPLOADED","PROCESSING"].includes(item.status))) {
+    clearTimeout(documentTimer); documentTimer = setTimeout(() => loadDocuments().catch(error => showToast(error.message,"error")),2000);
+  }
+}
+async function uploadFiles(files) {
+  for (const file of files) {
+    try {
+      const data = new FormData(); data.append("file",file);
+      const uploaded = await apiFetch("/api/documents",{method:"POST",body:data,timeoutMs:60000});
+      showToast(file.name + ": recebido. Acompanhe a preparação em Documentos.","success");
+      if (current && current.document_ids !== null && !busy) {
+        current = {...current,...await apiFetch("/api/chats/" + current.id,{method:"PATCH",body:JSON.stringify({document_ids:[...new Set(current.document_ids.concat(uploaded.id))]})})};
+      } else if (!current && selected !== null) selected.push(uploaded.id);
+    } catch (error) { showToast(file.name + ": " + error.message,"error"); }
+  }
+  await loadDocuments(); updateScopeLabel(); if (!messageHistory.length && !busy) renderMessages();
+}
+$("#new-chat").addEventListener("click",newChat);
+$("#chat-search").addEventListener("input",() => { clearTimeout(searchTimer); searchTimer = setTimeout(() => loadChats().catch(error => showToast(error.message,"error")),250); });
+$("#more-chats").addEventListener("click",() => loadChats(true).catch(error => showToast(error.message,"error")));
+$("#pin-chat").addEventListener("click",async () => {
+  if (!current) return;
+  try { const updated = await apiFetch("/api/chats/" + current.id,{method:"PATCH",body:JSON.stringify({pinned:!current.pinned})}); current.pinned = updated.pinned; $("#pin-chat").textContent = updated.pinned ? "★" : "☆"; await loadChats(); }
+  catch (error) { showToast(error.message,"error"); }
 });
-
-(async () => { try { await loadCurrentUser(); await loadSuggestionQuestions(); await loadChats(); } catch (reason) { showToast(reason.message, "error"); } })();
+$("#select-scope").addEventListener("click",async () => {
+  try {
+    await loadDocuments(); const scope = current ? current.document_ids : selected;
+    $("#scope-all").checked = scope === null; $("#scope-options").replaceChildren();
+    documents.forEach(document => {
+      const label = element("label","scope-option"), checkbox = window.document.createElement("input");
+      checkbox.type = "checkbox"; checkbox.value = document.id; checkbox.checked = scope?.includes(document.id) || false;
+      checkbox.disabled = document.status !== "READY"; checkbox.addEventListener("change",() => { $("#scope-all").checked = false; });
+      label.append(checkbox,document.original_filename + " · v" + document.version + (document.archived ? " · arquivado" : "") + (document.status !== "READY" ? " · aguardando processamento" : "")); $("#scope-options").append(label);
+    });
+    $("#scope-dialog").showModal();
+  } catch (error) { showToast(error.message,"error"); }
+});
+$("#scope-form").addEventListener("submit",async event => {
+  event.preventDefault();
+  const ids = $("#scope-all").checked ? null : [...document.querySelectorAll("#scope-options input:checked")].map(node => Number(node.value));
+  if (ids !== null && !ids.length) { showToast("Selecione ao menos um documento ou marque todos.","error"); return; }
+  try {
+    if (current) { const result = await apiFetch("/api/chats/" + current.id,{method:"PATCH",body:JSON.stringify({document_ids:ids})}); current.document_ids = result.document_ids; }
+    else selected = ids;
+    updateScopeLabel(); $("#scope-dialog").close();
+  } catch (error) { showToast(error.message,"error"); }
+});
+$("#attach-document").addEventListener("click",() => $("#chat-file-input").click());
+$("#chat-file-input").addEventListener("change",async event => { await uploadFiles([...event.target.files]); event.target.value = ""; });
+$("#cancel-answer").addEventListener("click",async () => {
+  if (!job || !current) return;
+  try { await apiFetch("/api/chats/" + current.id + "/generations/" + job.id + "/cancel",{method:"POST"}); }
+  catch (error) { showToast(error.message,"error"); }
+});
+$("#resume-answer").addEventListener("click",() => { if (job) follow(job,sequence); else if (current) selectChat(current.id); });
+$("#rename-chat").addEventListener("click",() => { if (!current) return; $("#rename-input").value = current.title; $("#rename-dialog").showModal(); $("#rename-input").focus(); });
+$("#cancel-rename").addEventListener("click",() => $("#rename-dialog").close());
+$("#rename-form").addEventListener("submit",async event => {
+  event.preventDefault(); if (!current) return;
+  try { const result = await apiFetch("/api/chats/" + current.id,{method:"PATCH",body:JSON.stringify({title:$("#rename-input").value.trim()})}); current.title = result.title; $("#chat-title").textContent = result.title; $("#rename-dialog").close(); await loadChats(); }
+  catch (error) { showToast(error.message,"error"); }
+});
+$("#delete-chat").addEventListener("click",() => { if (current) $("#delete-dialog").showModal(); });
+$("#cancel-delete").addEventListener("click",() => $("#delete-dialog").close());
+$("#confirm-delete").addEventListener("click",async () => {
+  if (!current) return;
+  try { await apiFetch("/api/chats/" + current.id,{method:"DELETE"}); localStorage.removeItem(draftKey()); input.value = ""; newChat(); await loadChats(); $("#delete-dialog").close(); }
+  catch (error) { showToast(error.message,"error"); }
+});
+$("#feedback-form").addEventListener("submit",async event => {
+  event.preventDefault(); await rate(feedbackTarget,-1,$("#feedback-reason").value + ($("#feedback-comment").value.trim() ? ": " + $("#feedback-comment").value.trim() : "")); $("#feedback-dialog").close();
+});
+$("#export-chat").addEventListener("click",() => { if (current) $("#export-dialog").showModal(); });
+document.querySelectorAll("[data-export]").forEach(node => node.addEventListener("click",async () => {
+  if (!current) return;
+  try { const format = node.dataset.export; await downloadFile("/api/chats/" + current.id + "/export?format=" + format,"ai-up-conversa." + (format === "markdown" ? "md" : format)); $("#export-dialog").close(); }
+  catch (error) { showToast(error.message,"error"); }
+}));
+document.querySelectorAll("[data-close]").forEach(node => node.addEventListener("click",() => document.getElementById(node.dataset.close).close()));
+form.addEventListener("submit",event => { event.preventDefault(); ask(input.value); });
+input.addEventListener("input",() => { saveDraft(); resize(); });
+input.addEventListener("keydown",event => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); if (input.value.trim().length >= 2) form.requestSubmit(); } });
+messages.addEventListener("scroll",() => $("#jump-latest").classList.toggle("hidden",messages.scrollHeight-messages.scrollTop-messages.clientHeight < 160));
+$("#jump-latest").addEventListener("click",() => messages.scrollTo({top:messages.scrollHeight,behavior:"smooth"}));
+window.addEventListener("beforeunload",saveDraft);
+(async () => {
+  try {
+    user = await loadCurrentUser(); await loadDocuments(); await loadChats();
+    const params = new URLSearchParams(location.search), documentId = Number(params.get("document"));
+    if (documentId && documents.some(item => item.id === documentId)) { newChat(); selected = [documentId]; updateScopeLabel(); }
+    else { const last = Number(params.get("chat") || localStorage.getItem(storageKey("last-chat"))); if (last) await selectChat(last); else { renderMessages(); restoreDraft(); } }
+  } catch (error) { showToast(error.message,"error"); }
+})();
 })();

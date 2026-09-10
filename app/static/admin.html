@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Administração — AI-Up</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/css/app.css?v=7">
+    <link rel="stylesheet" href="/css/app.css?v=12">
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -17,13 +17,13 @@
       <main class="workspace content-page">
         <header class="page-header"><div><p class="section-label">VISÃO GERAL</p><h1>Administração</h1><p>Utilização, auditoria e usuários do ambiente local.</p></div></header>
         <section id="stats" class="stats-grid"></section>
-        <section class="admin-grid">
-          <div class="panel"><div class="panel-header"><div><p class="section-label">AUDITORIA</p><h2>Atividades recentes</h2></div></div><div id="logs" class="log-list"></div></div>
+        <section class="panel padded"><h2>Qualidade das respostas</h2><p>Amostra das últimas 500 respostas. Avaliações refletem feedback, não precisão científica.</p><div id="quality"></div></section><section class="admin-grid">
+          <div class="panel"><div class="panel-header"><div><p class="section-label">AUDITORIA</p><h2>Atividades recentes</h2></div></div><div id="logs" class="log-list"></div><div class="dialog-actions"><button id="previous-logs" class="text-button">Anterior</button><span id="log-page"></span><button id="next-logs" class="text-button">Próxima</button></div></div>
           <div id="users-panel" class="panel hidden"><div class="panel-header"><div><p class="section-label">IT ADMIN</p><h2>Usuários</h2></div><button id="new-user" class="button secondary">Novo usuário</button></div><div id="users" class="user-list"></div></div>
         </section>
       </main>
     </div>
-    <div id="toast" class="toast"></div>
-    <script src="/js/api.js?v=2"></script><script src="/js/admin.js?v=2"></script>
+    <dialog id="user-dialog" class="app-dialog"><form id="user-form"><h2>Novo usuário</h2><label>Nome<input name="name" required maxlength="120"></label><label>E-mail<input name="email" type="email" required></label><label>Senha inicial<input name="password" type="password" autocomplete="new-password" minlength="10" required></label><div class="dialog-actions"><button type="button" id="cancel-user" class="button secondary">Cancelar</button><button class="button primary">Criar usuário</button></div></form></dialog><div id="toast" class="toast"></div>
+    <script src="/js/api.js?v=11"></script><script src="/js/admin.js?v=10"></script>
   </body>
 </html>

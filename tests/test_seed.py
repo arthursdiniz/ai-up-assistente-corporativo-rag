@@ -6,7 +6,7 @@ from app.models.user import User
 from scripts.seed import DEVELOPMENT_PASSWORD, seed
 
 
-def test_seed_restores_demonstration_password() -> None:
+def test_seed_preserves_existing_password() -> None:
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == "usuario@aiup.local"))
         assert user is not None
@@ -18,4 +18,4 @@ def test_seed_restores_demonstration_password() -> None:
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == "usuario@aiup.local"))
         assert user is not None
-        assert verify_password(DEVELOPMENT_PASSWORD, user.password_hash)
+        assert verify_password("senha-antiga", user.password_hash)

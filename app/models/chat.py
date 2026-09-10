@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -16,8 +16,10 @@ class Chat(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(String(160), default="Nova conversa", nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    document_ids: Mapped[list | None] = mapped_column(JSON)
 
     user: Mapped["User"] = relationship(back_populates="chats")
     messages: Mapped[list["Message"]] = relationship(
-        back_populates="chat", cascade="all, delete-orphan", order_by="Message.created_at"
+        back_populates="chat", cascade="all, delete-orphan", order_by="(Message.created_at, Message.id)"
     )

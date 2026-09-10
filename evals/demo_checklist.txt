@@ -1,0 +1,8 @@
+DOCUMENTO FICTÍCIO — DEMONSTRAÇÃO DO AI-UP
+
+Procedimento de compra interna — versão 1
+O solicitante deve enviar a cotação ao gestor com 10 dias úteis de antecedência.
+O gestor deve aprovar ou rejeitar o pedido em até 2 dias úteis.
+Compras acima de R$ 2.000,00 exigem três cotações.
+O financeiro agenda o pagamento somente após a aprovação do gestor.
+O documento não define data de pagamento nem prazo do fornecedor.

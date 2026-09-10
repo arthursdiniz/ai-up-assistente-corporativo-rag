@@ -46,4 +46,4 @@ def test_ollama_receives_bounded_history_before_current_question(monkeypatch) ->
     assert "PERGUNTA ATUAL:\nQual é a missão dela?" in messages[-1]["content"]
     assert "dado não confiável" in SYSTEM_PROMPT
     assert "&lt;/documento&gt;" in messages[-1]["content"]
-    assert captured["payload"]["options"] == {"temperature": 0.0, "num_predict": 600}
+    assert captured["payload"]["options"] == {"temperature": 0.0, "num_predict": 1200, "num_ctx": 8192}

@@ -1,65 +1,41 @@
-# Roteiro de apresentação do AI-Up — 5 minutos
+# Demonstração do AI-Up — 5 minutos
 
-## Preparação
+## Antes
 
-Execute `./scripts/start_ai_up.ps1`, abra `http://localhost:8000` e entre com `usuario@aiup.local`. A senha inicial local é `AiUp@2026`. Envie `output/pdf/regulamento_empresa_demo.pdf` em **Documentos** e aguarde **Pronto**.
+Abra o Ollama e inicie .\scripts\start_ai_up.ps1. Entre com uma conta local existente, confira Diagnóstico e conta e o documento regulamento_empresa_demo.pdf na biblioteca. Se já existe, não envie novamente: duplicatas agora são detectadas. Evite documentos pessoais na projeção.
 
-## 0:00–0:40 — problema e proposta
+## 0:00–0:40 — problema e privacidade
 
-“Empresas acumulam regulamentos e contratos, mas localizar uma resposta verificável consome tempo. O AI-Up é um assistente corporativo privado: consulta os documentos do próprio usuário, executa a IA localmente e mostra a evidência.”
+“Consultar regulamentos e contratos consome tempo. O AI-Up transforma documentos locais em respostas com trechos que podem ser conferidos.” Mostre a biblioteca, tipos, estado Pronto e categorias.
 
-Mostre rapidamente **Documentos** e destaque tipos aceitos, status e isolamento por usuário.
+## 0:40–1:40 — tarefa útil e evidência
 
-## 0:40–1:35 — pergunta direta e evidência
+Clique Consultar com IA no regulamento. Peça: “Resuma as regras de férias em dois tópicos.” Mostre a resposta progressiva, clique em [1] e abra a página original. Diferencie fonte verificável de garantia de acerto.
 
-Pergunte:
+## 1:40–2:20 — conversa contextual
 
-> Quantos dias de férias o colaborador possui e com qual antecedência deve fazer o pedido?
+Pergunte: “Qual é o prazo?” Demonstre que a referência continua sendo férias. O resultado esperado é antecedência de 30 dias corridos. Uma pergunta com um assunto explicitamente nomeado inicia outra busca; a seleção documental continua sendo o limite de acesso.
 
-Mostre a resposta esperada — 30 dias e pedido com 30 dias corridos —, expanda **Fonte 1**, aponte nome do documento, página e excerto. Use **Copiar** para demonstrar utilidade prática.
+## 2:20–3:10 — transformar informação em trabalho
 
-## 1:35–2:25 — memória contextual
+Peça: “Monte um checklist das obrigações do regulamento, incluindo prazos.” Mostre citações de páginas diferentes. Use exportação HTML para um relatório imprimível com fontes. Para comparar versões, selecione as duas explicitamente.
 
-Na mesma conversa, pergunte:
+## 3:10–3:45 — informação ausente
 
-> E o que mais é importante saber sobre elas?
+Pergunte: “Qual é o valor do vale-alimentação?” A resposta esperada é a recusa. Explique: a busca pode localizar um trecho parecido, mas isso não autoriza inventar o benefício. Essa distinção foi testada separadamente.
 
-Explique que a pergunta isolada é vaga, mas o AI-Up identifica “elas” como férias, usa somente o histórico recente necessário e refaz a busca. Mostre que o título “Nova conversa” também foi criado automaticamente pela primeira pergunta.
+## 3:45–4:20 — usabilidade
 
-## 2:25–3:10 — exatidão e tarefas
+Mostre favoritos, busca no histórico, feedback com motivo e diagnóstico. Refazer substitui apenas a última resposta; Parar impede salvar a geração cancelada. A pergunta pode ser recuperada para nova tentativa.
 
-Pergunte:
+## 4:20–5:00 — resultados e limites
 
-> Liste os prazos e valores mais importantes do regulamento.
+Mostre docs/AVALIACAO_IA.md: 90% Hit@3 em 20 casos sintéticos, 6/6 verificações controladas do modelo real, testes de isolamento e migração PostgreSQL. Não anuncie “90% de precisão geral da IA”. Termine com os limites: heurísticas de contexto, erros de OCR, perda de detalhes na condensação e necessidade de avaliação humana em documentos inéditos.
 
-Explique que o classificador escolhe uma extração ampla, busca mais páginas e pede ao modelo uma lista estruturada. A busca híbrida combina significado com BM25 para não perder números, siglas ou códigos.
+## Perguntas prováveis
 
-## 3:10–3:45 — ausência de informação
-
-Pergunte:
-
-> Qual é o valor do vale-alimentação oferecido pela empresa?
-
-Mostre a recusa esperada. Explique que uma política de suficiência impede que uma página apenas parecida seja apresentada como prova.
-
-## 3:45–4:20 — experiência e melhoria contínua
-
-Mostre os estados de processamento, **Tentar novamente**, 👍/👎 e sugestões iniciais. Explique que o feedback já é persistido por mensagem e forma a base de uma avaliação futura sem permitir que um usuário altere mensagens de outro.
-
-## 4:20–5:00 — arquitetura e números
-
-Abra `docs/ARQUITETURA_RAG.md` e resuma: extração/OCR, chunks, embeddings, ChromaDB, busca híbrida, reranking, Ollama e fontes no PostgreSQL. Feche com os resultados: 100% de Hit@3 e Top‑1 nos treze casos locais, precisão média das fontes de 51,28% para 74,36% e zero vazamento entre usuários.
-
-## Perguntas prováveis da banca
-
-**A IA pode inventar?** Pode haver erro de geração; por isso o prompt limita fatos ao contexto, a recuperação rejeita evidência fraca e a interface mostra o excerto para conferência.
-
-**Por que não usar ChatGPT na nuvem?** O objetivo é privacidade, ausência de custo recorrente e funcionamento local. A camada de provedor permite outra integração futura sem reescrever o RAG.
-
-**Por que PostgreSQL e ChromaDB?** PostgreSQL guarda entidades, permissões e auditoria; ChromaDB é otimizado para vetores. Cada ferramenta resolve uma responsabilidade diferente.
-
-**O resultado de 100% é definitivo?** Não. É um teste de regressão pequeno e sintético. O documento de avaliação registra essa limitação e propõe ampliar o corpus e a validação humana.
-
-**Como o sistema protege os dados?** Autorização é validada no backend e ambas as buscas são filtradas por `user_id`; documentos e prompts não saem da máquina.
-
-**Como evoluiria para produção?** Processamento assíncrono, índice lexical escalável, revogação de tokens, monitoramento, conjunto de avaliação real e governança de retenção.
+- **Pode inventar?** Sim. Prompt, seleção de evidências e avisos reduzem o risco, mas é preciso conferir fontes.
+- **Por que duas bases?** PostgreSQL guarda contas, conversas, jobs e evidências; Chroma guarda os vetores de busca.
+- **É aprendizado automático com feedback?** Não. O feedback é registrado para diagnóstico e melhoria; não treina o modelo automaticamente.
+- **Pronto para uma empresa inteira?** Este escopo é local e monoprocesso. Equipes, governança, autenticação organizacional, filas distribuídas e testes de carga são próximos projetos.
+- **Como recuperar dados?** Backup verificável e restauração em destino novo. Nunca redefinir contas ou apagar o índice antigo antes de preparar o novo.
