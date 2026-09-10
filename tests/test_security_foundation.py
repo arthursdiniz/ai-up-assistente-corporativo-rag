@@ -75,3 +75,27 @@ def test_bootstrap_without_token_rejects_remote_host_in_development() -> None:
     with pytest.raises(BootstrapForbidden):
         service.validate_access("203.0.113.10", None)
     service.validate_access("127.0.0.1", None)
+
+
+def test_http_errors_have_stable_code_and_request_id(client: TestClient) -> None:
+    response = client.get("/api/auth/me")
+    body = response.json()
+
+    assert response.status_code == 401
+    assert body["error"] == "AUTHENTICATION_REQUIRED"
+    assert body["message"] == body["detail"] == "Usuário não autenticado."
+    assert body["request_id"] == response.headers["X-Request-ID"]
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+
+
+def test_validation_errors_use_same_contract(client: TestClient) -> None:
+    response = client.post("/api/auth/login", json={"email": "invalido"})
+    body = response.json()
+
+    assert response.status_code == 422
+    assert body["error"] == "VALIDATION_ERROR"
+    assert body["message"] == body["detail"]
+    assert body["request_id"] == response.headers["X-Request-ID"]
+    assert {item["field"] for item in body["errors"]} == {"email", "password"}

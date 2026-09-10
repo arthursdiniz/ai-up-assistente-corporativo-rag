@@ -9,6 +9,8 @@ from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.refresh_token import RefreshToken
 from app.models.user import User, UserRole
+from app.services.audit_service import AuditService
+from app.services.auth_service import AuthService
 from app.services.session_service import SessionService
 
 
@@ -26,6 +28,30 @@ def test_invalid_login(client: TestClient) -> None:
         "/api/auth/login", json={"email": "usuario@aiup.local", "password": "incorreta"}
     )
     assert response.status_code == 401
+    with SessionLocal() as db:
+        event = db.scalar(select(AuditLog).where(AuditLog.action == "LOGIN_FAILED"))
+        assert event is not None
+        assert event.user_id is None
+        assert event.ip_address == "testclient"
+        assert event.details == {
+            "identifier_fingerprint": AuditService.identifier_fingerprint(
+                "usuario@aiup.local"
+            )
+        }
+        assert "usuario@aiup.local" not in str(event.details)
+
+
+def test_unknown_email_still_runs_password_verification(monkeypatch) -> None:
+    calls: list[tuple[str, str]] = []
+
+    def fake_verify(password: str, password_hash: str) -> bool:
+        calls.append((password, password_hash))
+        return False
+
+    monkeypatch.setattr("app.services.auth_service.verify_password", fake_verify)
+    with SessionLocal() as db:
+        assert AuthService().authenticate(db, "nao-existe@aiup.local", "qualquer") is None
+    assert len(calls) == 1
 
 
 def test_protected_route_without_token(client: TestClient) -> None:

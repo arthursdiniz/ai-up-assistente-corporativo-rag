@@ -1,5 +1,16 @@
 # Verificação da evolução — 9 de setembro de 2026
 
+## Segurança e auditoria operacional — 10 de setembro de 2026
+
+- 76 testes passaram em SQLite e no PostgreSQL isolado `ai_up_test_20260910_045706_536513`.
+- Respostas HTTP, validações e falhas internas usam contrato consistente com `error`, `message`, `detail` compatível e `request_id`.
+- Os cabeçalhos originais de exceções são preservados; o limite de login continua enviando `Retry-After`.
+- Toda resposta recebe `X-Request-ID`, proteção contra MIME sniffing e enquadramento; respostas da API não podem ser armazenadas em cache.
+- Tentativas de login inválidas geram `LOGIN_FAILED` sem persistir e-mail ou senha, somente IP e impressão digital irreversível.
+- E-mails inexistentes percorrem uma verificação Argon2 fictícia para reduzir diferenças de tempo observáveis na autenticação.
+- Bloqueio, desbloqueio e mudança de perfil geram `USER_BLOCKED`, `USER_UNBLOCKED` e `USER_ROLE_CHANGED` com alvo e mudanças mínimas.
+- O painel traduz os novos eventos para nomes compreensíveis em português.
+
 ## Configuração inicial e CORS — 10 de setembro de 2026
 
 - 72 testes passaram em SQLite e no PostgreSQL isolado `ai_up_test_20260910_043438_679600`.

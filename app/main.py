@@ -1,10 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
@@ -14,6 +16,7 @@ from app.api.health import router as health_router
 from app.api.users import router as users_router
 from app.core.config import get_settings
 from app.core.cors import configure_cors
+from app.core.errors import error_payload, http_error_handler, validation_error_handler
 
 
 settings = get_settings()
@@ -50,21 +53,45 @@ app = FastAPI(
 configure_cors(app, settings)
 
 
+@app.middleware("http")
+async def add_request_context(request: Request, call_next):
+    request.state.request_id = uuid4().hex
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request.state.request_id
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
+app.add_exception_handler(StarletteHTTPException, http_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+
+
 @app.exception_handler(Exception)
 async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.error("Erro não tratado em %s (%s)", request.url.path, type(exc).__name__)
-    return JSONResponse(status_code=500, content={"detail": "Erro interno do servidor."})
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
-    errors = [
-        {"field": ".".join(str(part) for part in error["loc"][1:]), "message": error["msg"]}
-        for error in exc.errors()
-    ]
+    logger.exception(
+        "Erro não tratado em %s (%s), request_id=%s",
+        request.url.path,
+        type(exc).__name__,
+        request.state.request_id,
+    )
     return JSONResponse(
-        status_code=422,
-        content={"detail": "Os dados enviados são inválidos.", "errors": errors},
+        status_code=500,
+        content=error_payload(
+            request,
+            status_code=500,
+            message="Erro interno do servidor.",
+        ),
+        headers={
+            "X-Request-ID": request.state.request_id,
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Referrer-Policy": "same-origin",
+            "Cache-Control": "no-store",
+        },
     )
 
 

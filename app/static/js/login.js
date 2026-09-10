@@ -25,7 +25,7 @@ form.addEventListener("submit", async (event) => {
       body: JSON.stringify({ email: form.email.value, password: form.password.value }),
     });
     const body = await response.json();
-    if (!response.ok) throw new Error(body.detail || "Não foi possível entrar.");
+    if (!response.ok) throw new Error(body.message || body.detail || "Não foi possível entrar.");
     sessionStorage.setItem("ai_up_access_token", body.access_token);
     window.location.href = "/";
   } catch (reason) {
@@ -82,7 +82,7 @@ bootstrapForm.addEventListener("submit", async (event) => {
       }),
     });
     const body = await response.json();
-    if (!response.ok) throw new Error(body.detail || "Não foi possível criar o administrador.");
+    if (!response.ok) throw new Error(body.message || body.detail || "Não foi possível criar o administrador.");
     sessionStorage.setItem("ai_up_access_token", body.access_token);
     window.location.href = "/";
   } catch (reason) {

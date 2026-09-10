@@ -240,6 +240,10 @@ Ao apagar um documento, o arquivo local e seus vetores também são removidos. A
 - ausência de segredos nos logs;
 - CORS fechado por padrão, sem wildcard, e credenciais liberadas somente para origens HTTP(S) explícitas;
 - configuração inicial de uso único, limitada ao banco vazio, ao acesso local em desenvolvimento ou a um token forte nos demais ambientes.
+- respostas de erro com código estável e identificador de requisição para diagnóstico, sem exposição de stack trace;
+- tentativas de login recusadas auditadas por IP e impressão digital irreversível do identificador, sem armazenar a senha ou o e-mail informado;
+- verificação de senha de custo equivalente para e-mails inexistentes, reduzindo enumeração de contas por tempo de resposta;
+- eventos distintos para bloqueio, desbloqueio e troca de perfil de acesso.
 
 O logout incrementa a versão de segurança da conta, revoga os refresh tokens no PostgreSQL e remove o cookie da sessão. A renovação usa rotação de uso único: um token antigo não pode ser reutilizado depois de emitir o próximo.
 
@@ -250,6 +254,8 @@ CORS_ALLOWED_ORIGINS=["https://assistente.empresa.com"]
 ```
 
 Não use `*`: o AI-Up transporta credenciais e rejeita curingas na inicialização.
+
+Erros da API mantêm o campo legado `detail` e também retornam `error`, `message` e `request_id`. O mesmo identificador aparece no cabeçalho `X-Request-ID`, permitindo correlacionar um erro apresentado ao usuário com o log técnico sem revelar dados internos. Respostas da API usam `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` e `X-Frame-Options: DENY`.
 
 ## Custo do projeto e licenças
 

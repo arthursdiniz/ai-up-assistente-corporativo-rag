@@ -22,6 +22,8 @@ SECRET_KEY forte pode ser guardada nas variáveis de usuário do Windows. Se aus
 
 Abra Diagnóstico e conta para conferir banco, Ollama/modelo, OCR, busca e disco. A troca de senha encerra todas as sessões. Sair também revoga os tokens existentes da conta. O limite de tentativas de login fica em memória e reinicia com o processo.
 
+Quando a API devolver um erro, anote o `request_id` do corpo ou o cabeçalho `X-Request-ID`. Ele identifica aquela requisição sem incluir senha, token ou conteúdo documental. Tentativas de login recusadas registram somente IP e uma impressão digital curta e irreversível do e-mail normalizado. O painel administrativo apresenta eventos específicos de bloqueio, desbloqueio e mudança de perfil.
+
 Use apenas um processo Uvicorn. Jobs e delta de streaming usam memória local; estado final é persistido no PostgreSQL. Reabrir a conversa retoma a transmissão. Reiniciar o servidor marca trabalhos interrompidos para nova tentativa. Parar impede salvar a resposta, mas uma chamada Ollama em pré-processamento pode demorar até devolver controle.
 
 ## Backup e restauração

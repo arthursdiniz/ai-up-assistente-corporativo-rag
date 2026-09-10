@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.permissions import require_roles
 from app.core.security import hash_password
 from app.db.session import get_db
@@ -10,7 +11,6 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.audit_service import AuditService
 from app.services.session_service import SessionService
-from app.core.config import get_settings
 
 
 router = APIRouter(prefix="/users", tags=["Usuários"])
@@ -64,14 +64,45 @@ def update_user(
         administrators = list(db.scalars(select(User).where(User.role == UserRole.IT_ADMIN, User.active.is_(True)).order_by(User.id).with_for_update()))
         if len(administrators) <= 1 and user.active:
             raise HTTPException(409, "Mantenha pelo menos um administrador ativo.")
+    previous_active = user.active
+    previous_role = user.role
     changes = payload.model_dump(exclude_unset=True)
     for field, value in changes.items():
         setattr(user, field, value.strip() if field == "name" else value)
     if "active" in changes or "role" in changes:
         user.token_version += 1
         session_service.revoke_all(db, user.id)
-    action = "DISABLE_USER" if payload.active is False else "UPDATE_USER"
-    audit_service.record(db, action, current_user.id, "user", str(user.id), details={"fields": list(changes)})
+    event_recorded = False
+    if "active" in changes and user.active != previous_active:
+        audit_service.record(
+            db,
+            "USER_UNBLOCKED" if user.active else "USER_BLOCKED",
+            current_user.id,
+            "user",
+            str(user.id),
+            details={"active": user.active},
+        )
+        event_recorded = True
+    if "role" in changes and user.role != previous_role:
+        audit_service.record(
+            db,
+            "USER_ROLE_CHANGED",
+            current_user.id,
+            "user",
+            str(user.id),
+            details={"from": previous_role.value, "to": user.role.value},
+        )
+        event_recorded = True
+    remaining_fields = [field for field in changes if field not in {"active", "role"}]
+    if remaining_fields or not event_recorded:
+        audit_service.record(
+            db,
+            "UPDATE_USER",
+            current_user.id,
+            "user",
+            str(user.id),
+            details={"fields": remaining_fields},
+        )
     db.commit()
     db.refresh(user)
     return user

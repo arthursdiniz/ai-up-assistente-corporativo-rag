@@ -121,7 +121,10 @@ def test_last_admin_null_name_and_password_revocation(client):
 def test_login_rate_limit(client):
     for _ in range(get_settings().login_attempt_limit):
         assert client.post("/api/auth/login",json={"email":"usuario@aiup.local","password":"wrong"}).status_code == 401
-    assert client.post("/api/auth/login",json={"email":"usuario@aiup.local","password":"wrong"}).status_code == 429
+    limited = client.post("/api/auth/login",json={"email":"usuario@aiup.local","password":"wrong"})
+    assert limited.status_code == 429
+    assert limited.json()["error"] == "RATE_LIMITED"
+    assert limited.headers["Retry-After"] == str(get_settings().login_attempt_window_seconds)
 
 
 def test_job_idempotency_retry_export_feedback_and_sources_survive_delete(client,monkeypatch):

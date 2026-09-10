@@ -3,6 +3,17 @@ const { apiFetch, loadCurrentUser, showToast } = window.aiup;
 const statsContainer = document.querySelector("#stats");
 const logsContainer = document.querySelector("#logs");
 const usersContainer = document.querySelector("#users");
+const ACTION_LABELS = {
+  BOOTSTRAP_ADMIN: "Administrador inicial criado",
+  CHANGE_PASSWORD: "Senha alterada",
+  CREATE_USER: "Usuário criado",
+  LOGIN: "Login realizado",
+  LOGIN_FAILED: "Tentativa de login recusada",
+  LOGOUT: "Sessões encerradas",
+  USER_BLOCKED: "Usuário bloqueado",
+  USER_ROLE_CHANGED: "Perfil de acesso alterado",
+  USER_UNBLOCKED: "Usuário desbloqueado",
+};
 
 const STAT_LABELS = {
   users: "Usuários", documents: "Documentos", documents_ready: "Prontos",
@@ -29,7 +40,7 @@ function renderLogs(logs) {
     const row = document.createElement("div");
     row.className = "log-row";
     const action = document.createElement("strong");
-    action.textContent = log.action;
+    action.textContent = ACTION_LABELS[log.action] || log.action;
     const meta = document.createElement("small");
     meta.textContent = `${log.resource_type || "sistema"}${log.resource_id ? ` #${log.resource_id}` : ""} · ${new Date(log.created_at).toLocaleString("pt-BR")}`;
     row.append(action, meta);

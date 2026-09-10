@@ -43,13 +43,16 @@ async function apiRequest(path, options = {}, allowRefresh = true) {
     }
     if (!response.ok) {
       let detail = "Não foi possível concluir a operação.";
+      let body = null;
       try {
-        const body = await response.json();
-        detail = typeof body.detail === "string" ? body.detail : detail;
+        body = await response.json();
+        detail = typeof body.message === "string" ? body.message : (typeof body.detail === "string" ? body.detail : detail);
         if (body.errors?.length) detail += " " + body.errors.map(item => item.field + ": " + item.message).join("; ");
       } catch {}
       const error = new Error(detail);
       error.status = response.status;
+      error.code = body?.error;
+      error.requestId = body?.request_id || response.headers.get("X-Request-ID");
       throw error;
     }
     return response;
