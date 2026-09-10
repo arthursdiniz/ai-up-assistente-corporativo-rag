@@ -12,6 +12,10 @@ O iniciador usa a conexão e o modelo configurados, valida PostgreSQL, aplica mi
 
 Na primeira instalação, use .\scripts\start_ai_up.ps1 -Demo para criar contas ausentes. O seed preserva nomes, senhas, funções e bloqueios existentes. --reset-demo é uma operação explícita de recuperação/desenvolvimento; não use em dados reais. Senhas demo são públicas.
 
+Para uma instalação sem contas de demonstração, execute as migrations e inicie normalmente. Quando o banco estiver vazio, a tela de login oferece **Configurar primeiro administrador**. Em desenvolvimento, faça isso em `localhost`; em homologação ou produção, defina antes um `BOOTSTRAP_TOKEN` com pelo menos 24 caracteres. O servidor não grava esse token e o fluxo é encerrado definitivamente assim que a primeira conta `IT_ADMIN` é criada.
+
+Se a interface estiver em outro domínio, autorize somente suas origens exatas em `CORS_ALLOWED_ORIGINS`, no formato de lista JSON. O padrão `[]` mantém acessos entre origens desativados. Wildcards, caminhos, credenciais embutidas e protocolos diferentes de HTTP(S) são rejeitados ao iniciar.
+
 SECRET_KEY forte pode ser guardada nas variáveis de usuário do Windows. Se ausente/fraca em desenvolvimento, uma chave temporária é gerada e sessões terminam ao reiniciar. Em produção uma chave configurada forte é obrigatória.
 
 ## Diagnóstico

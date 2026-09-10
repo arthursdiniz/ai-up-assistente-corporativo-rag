@@ -13,6 +13,7 @@ from app.api.documents import router as documents_router
 from app.api.health import router as health_router
 from app.api.users import router as users_router
 from app.core.config import get_settings
+from app.core.cors import configure_cors
 
 
 settings = get_settings()
@@ -46,6 +47,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+configure_cors(app, settings)
 
 
 @app.exception_handler(Exception)

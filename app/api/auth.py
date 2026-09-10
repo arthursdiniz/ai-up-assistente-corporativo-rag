@@ -1,18 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.core.permissions import get_current_user
 from app.core.config import get_settings
+from app.core.permissions import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
-from app.services.login_limiter import check_login, login_succeeded
-from pydantic import BaseModel, Field
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import BootstrapRequest, BootstrapStatus, LoginRequest, TokenResponse
 from app.schemas.common import MessageResponse
 from app.schemas.user import UserRead
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
+from app.services.bootstrap_service import (
+    BootstrapAlreadyCompleted,
+    BootstrapForbidden,
+    BootstrapService,
+    BootstrapUnavailable,
+)
+from app.services.login_limiter import check_login, login_succeeded
 from app.services.session_service import SessionService
 
 
@@ -21,6 +27,7 @@ auth_service = AuthService()
 audit_service = AuditService()
 settings = get_settings()
 session_service = SessionService(settings)
+bootstrap_service = BootstrapService(settings)
 
 
 def set_refresh_cookie(response: Response, raw_token: str) -> None:
@@ -42,6 +49,62 @@ def clear_refresh_cookie(response: Response) -> None:
         secure=settings.app_env != "development",
         httponly=True,
         samesite="strict",
+    )
+
+
+@router.get("/bootstrap", response_model=BootstrapStatus)
+def bootstrap_status(db: Session = Depends(get_db)) -> BootstrapStatus:
+    return BootstrapStatus(
+        required=bootstrap_service.is_required(db),
+        available=bootstrap_service.is_available(),
+        token_required=bootstrap_service.token_required(),
+    )
+
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register_first_admin(
+    payload: BootstrapRequest,
+    request: Request,
+    response: Response,
+    bootstrap_token: str | None = Header(default=None, alias="X-Bootstrap-Token"),
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    if not bootstrap_service.is_required(db):
+        raise HTTPException(
+            status_code=409, detail="A configuração inicial já foi concluída."
+        )
+    try:
+        bootstrap_service.validate_access(
+            request.client.host if request.client else None, bootstrap_token
+        )
+        result = bootstrap_service.create_first_admin(
+            db,
+            name=payload.name,
+            email=payload.email,
+            password=payload.password,
+            ip_address=request.client.host if request.client else None,
+        )
+    except BootstrapAlreadyCompleted as exc:
+        raise HTTPException(
+            status_code=409, detail="A configuração inicial já foi concluída."
+        ) from exc
+    except BootstrapForbidden as exc:
+        raise HTTPException(status_code=403, detail="Configuração inicial não autorizada.") from exc
+    except BootstrapUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Defina BOOTSTRAP_TOKEN para habilitar a configuração inicial neste ambiente.",
+        ) from exc
+    set_refresh_cookie(response, result.refresh_token)
+    return TokenResponse(
+        access_token=create_access_token(
+            str(result.user.id), token_version=result.user.token_version
+        ),
+        user=UserRead.model_validate(result.user),
     )
 
 

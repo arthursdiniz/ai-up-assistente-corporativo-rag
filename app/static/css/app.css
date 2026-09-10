@@ -212,6 +212,9 @@ h1 span { color: var(--muted); }
 .auth-card input, .admin-user-row select { width: 100%; padding: 0.85rem 0.95rem; border: 1px solid var(--line); border-radius: 0.7rem; outline: 0; color: var(--ink); background: rgba(0,0,0,0.24); font: inherit; }
 .auth-card input:focus { border-color: rgba(129,195,215,0.55); box-shadow: 0 0 0 3px rgba(129,195,215,0.08); }
 .form-error { min-height: 1.2rem; margin: 0 !important; color: #ff8c84 !important; font-size: 0.8rem; }
+.bootstrap-entry { display: grid; gap: 0.7rem; margin: 0 0 1rem; padding: 1rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.bootstrap-entry small { color: var(--muted); line-height: 1.45; }
+.app-dialog #bootstrap-token-field { display: grid; gap: 0.9rem; }
 
 .content-page { display: block; overflow-y: auto; padding-bottom: 3rem; }
 .upload-button { cursor: pointer; }

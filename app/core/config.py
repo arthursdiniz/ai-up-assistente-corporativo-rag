@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     secret_key: str = Field(default="change-me", repr=False)
     access_token_expire_minutes: int = Field(default=30, ge=5, le=1440)
     refresh_token_expire_days: int = Field(default=14, ge=1, le=90)
+    cors_allowed_origins: list[str] = Field(default_factory=list)
+    bootstrap_token: SecretStr | None = Field(default=None, repr=False)
 
     upload_dir: Path = Path("./data/uploads")
     chroma_dir: Path = Path("./data/chroma")
@@ -85,6 +87,28 @@ class Settings(BaseSettings):
             raise ValueError("CHUNK_OVERLAP deve ser menor que CHUNK_SIZE.")
         if self.rag_candidate_pool < self.rag_top_k:
             raise ValueError("RAG_CANDIDATE_POOL deve ser maior ou igual a RAG_TOP_K.")
+        normalized_origins: list[str] = []
+        for origin in self.cors_allowed_origins:
+            candidate = origin.strip().rstrip("/")
+            parsed = urlsplit(candidate)
+            if (
+                candidate == "*"
+                or parsed.scheme not in {"http", "https"}
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError(
+                    "CORS_ALLOWED_ORIGINS aceita somente origens HTTP(S) explícitas, sem caminhos ou wildcard."
+                )
+            if candidate not in normalized_origins:
+                normalized_origins.append(candidate)
+        self.cors_allowed_origins = normalized_origins
+        if self.bootstrap_token and len(self.bootstrap_token.get_secret_value()) < 24:
+            raise ValueError("BOOTSTRAP_TOKEN deve ter pelo menos 24 caracteres.")
 
         # A DATABASE_URL definida diretamente no processo tem precedência. Quando
         # ela não existe, as credenciais separadas do Windows substituem a URL de

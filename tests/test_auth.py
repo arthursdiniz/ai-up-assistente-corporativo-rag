@@ -6,7 +6,9 @@ from sqlalchemy import select
 from tests.conftest import PASSWORD, auth_headers
 from app.db.session import SessionLocal
 from app.main import app
+from app.models.audit_log import AuditLog
 from app.models.refresh_token import RefreshToken
+from app.models.user import User, UserRole
 from app.services.session_service import SessionService
 
 
@@ -84,3 +86,61 @@ def test_logout_revokes_refresh_session(client: TestClient) -> None:
     assert response.status_code == 200
     assert "max-age=0" in response.headers["set-cookie"].lower()
     assert client.post("/api/auth/refresh").status_code == 401
+
+
+def test_bootstrap_is_closed_after_users_exist(client: TestClient) -> None:
+    state = client.get("/api/auth/bootstrap")
+    assert state.status_code == 200
+    assert state.json() == {
+        "required": False,
+        "available": True,
+        "token_required": False,
+    }
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Intruso",
+            "email": "intruso@empresa.com",
+            "password": "SenhaForte@123",
+        },
+    )
+    assert response.status_code == 409
+
+
+def test_bootstrap_creates_only_first_administrator_and_starts_session(client: TestClient) -> None:
+    with SessionLocal() as db:
+        db.query(User).delete(synchronize_session=False)
+        db.commit()
+
+    assert client.get("/api/auth/bootstrap").json()["required"] is True
+    created = client.post(
+        "/api/auth/register",
+        json={
+            "name": "  Primeira Administradora  ",
+            "email": "ADMIN@EMPRESA.COM",
+            "password": "SenhaForte@123",
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["user"]["role"] == "IT_ADMIN"
+    assert created.json()["user"]["email"] == "admin@empresa.com"
+    assert created.cookies.get(SessionService.cookie_name)
+    access_token = created.json()["access_token"]
+    assert client.get(
+        "/api/auth/me", headers={"Authorization": f"Bearer {access_token}"}
+    ).status_code == 200
+
+    with SessionLocal() as db:
+        users = list(db.scalars(select(User)))
+        assert len(users) == 1 and users[0].role == UserRole.IT_ADMIN
+        assert db.scalar(select(AuditLog).where(AuditLog.action == "BOOTSTRAP_ADMIN"))
+
+    repeated = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Segundo",
+            "email": "segundo@empresa.com",
+            "password": "SenhaForte@123",
+        },
+    )
+    assert repeated.status_code == 409

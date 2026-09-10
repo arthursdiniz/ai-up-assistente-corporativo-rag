@@ -1,5 +1,15 @@
 # Verificação da evolução — 9 de setembro de 2026
 
+## Configuração inicial e CORS — 10 de setembro de 2026
+
+- 72 testes passaram em SQLite e no PostgreSQL isolado `ai_up_test_20260910_043438_679600`.
+- A cadeia completa de migrations continua compatível com os modelos, sem alteração de schema nesta etapa.
+- O CORS permanece desativado por padrão e aceita somente origens HTTP(S) explícitas; wildcard, caminhos e credenciais embutidas são rejeitados.
+- O cadastro público continua fechado. A rota de configuração cria somente o primeiro `IT_ADMIN`, inicia sua sessão, audita a operação e retorna conflito após existir qualquer usuário.
+- Em desenvolvimento sem token, a configuração inicial é restrita ao endereço de loopback. Nos demais ambientes, `BOOTSTRAP_TOKEN` com pelo menos 24 caracteres é obrigatório.
+- A concorrência do primeiro cadastro é protegida por trava no processo e advisory lock transacional no PostgreSQL.
+- Sintaxe Python/JavaScript e whitespace foram validados; permanece apenas o aviso conhecido de depreciação do TestClient.
+
 ## Evolução de sessão — 10 de setembro de 2026
 
 - Migration `20260910_0004` validada desde um PostgreSQL vazio, sem divergências entre schema e modelos.

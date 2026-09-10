@@ -72,6 +72,8 @@ Crie as tabelas exclusivamente pela migration e depois gere os usuários locais:
 .venv\Scripts\python.exe scripts/seed.py
 ```
 
+Para uma instalação real, não execute o seed. Inicie a aplicação com o banco vazio e use **Configurar primeiro administrador** na tela de login. Esse cadastro só funciona enquanto não existe nenhum usuário e cria exclusivamente uma conta `IT_ADMIN`. Em desenvolvimento ele é aceito apenas a partir da própria máquina; fora de desenvolvimento, configure um `BOOTSTRAP_TOKEN` forte e informe-o na tela. Depois da primeira conta, novos usuários são criados pelo painel administrativo autenticado.
+
 Usuários de demonstração:
 
 | E-mail | Função |
@@ -197,6 +199,8 @@ O arquivo `output/pdf/regulamento_empresa_demo.pdf` contém um regulamento fict�
 | `MAX_UPLOAD_SIZE_MB` | Limite por arquivo | `20` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Duração do access token mantido apenas na aba | `30` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Duração máxima da sessão renovável | `14` |
+| `CORS_ALLOWED_ORIGINS` | Lista JSON de origens web autorizadas | `[]` |
+| `BOOTSTRAP_TOKEN` | Segredo temporário para criar o primeiro administrador fora de desenvolvimento | vazio |
 | `CHUNK_SIZE` | Tamanho aproximado do trecho | `1200` |
 | `CHUNK_OVERLAP` | Sobreposição entre trechos | `200` |
 | `RAG_TOP_K` | Máximo de trechos recuperados | `5` |
@@ -233,9 +237,19 @@ Ao apagar um documento, o arquivo local e seus vetores também são removidos. A
 - limite lido antes de persistir o arquivo;
 - nomes internos UUID e proteção contra *path traversal*;
 - consultas parametrizadas pelo ORM;
-- ausência de segredos nos logs.
+- ausência de segredos nos logs;
+- CORS fechado por padrão, sem wildcard, e credenciais liberadas somente para origens HTTP(S) explícitas;
+- configuração inicial de uso único, limitada ao banco vazio, ao acesso local em desenvolvimento ou a um token forte nos demais ambientes.
 
 O logout incrementa a versão de segurança da conta, revoga os refresh tokens no PostgreSQL e remove o cookie da sessão. A renovação usa rotação de uso único: um token antigo não pode ser reutilizado depois de emitir o próximo.
+
+Para um frontend hospedado em outra origem, configure uma lista JSON exata, sem barras finais ou caminhos:
+
+```env
+CORS_ALLOWED_ORIGINS=["https://assistente.empresa.com"]
+```
+
+Não use `*`: o AI-Up transporta credenciais e rejeita curingas na inicialização.
 
 ## Custo do projeto e licenças
 

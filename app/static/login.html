@@ -1,10 +1,22 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Entrar — AI-Up</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/css/app.css?v=14"></head>
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Entrar — AI-Up</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/css/app.css?v=15"></head>
   <body class="auth-page">
     <main class="auth-shell">
       <section class="auth-intro"><a class="wordmark" href="/login.html">AI<span>↑</span>UP</a><p class="eyebrow">INTELIGÊNCIA CORPORATIVA LOCAL</p><h1>Seus documentos.<br><span>Respostas confiáveis.</span></h1><p>RAG, embeddings e modelo de linguagem executados na sua própria máquina.</p><div class="privacy-pill">● Privacidade por padrão</div></section>
-      <section class="auth-card"><p class="section-label">ACESSO LOCAL</p><h2>Bem-vindo ao AI-Up</h2><p>Entre com seu usuário para consultar a base documental.</p><form id="login-form"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="username" placeholder="usuario@aiup.local" required><label for="password">Senha</label><input id="password" name="password" type="password" autocomplete="current-password" required><p id="login-error" class="form-error" role="alert"></p><button class="button primary full" type="submit">Entrar</button></form><small>Ambiente local · Nenhum documento é enviado à nuvem</small></section>
-    </main><script src="/js/login.js?v=2"></script>
+      <section class="auth-card"><p class="section-label">ACESSO LOCAL</p><h2>Bem-vindo ao AI-Up</h2><p>Entre com seu usuário para consultar a base documental.</p><form id="login-form"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="username" placeholder="usuario@aiup.local" required><label for="password">Senha</label><input id="password" name="password" type="password" autocomplete="current-password" required><p id="login-error" class="form-error" role="alert"></p><button class="button primary full" type="submit">Entrar</button></form><div id="bootstrap-entry" class="bootstrap-entry hidden"><small id="bootstrap-message">Esta instalação ainda não possui usuários.</small><button id="bootstrap-open" class="button secondary full" type="button">Configurar primeiro administrador</button></div><small>Ambiente local · Nenhum documento é enviado à nuvem</small></section>
+    </main>
+    <dialog id="bootstrap-dialog" class="app-dialog">
+      <form id="bootstrap-form">
+        <p class="section-label">CONFIGURAÇÃO INICIAL</p><h2>Criar administrador</h2><p>Esta etapa aparece apenas enquanto não existe nenhuma conta.</p>
+        <label for="bootstrap-name">Nome</label><input id="bootstrap-name" name="name" minlength="2" maxlength="120" autocomplete="name" required>
+        <label for="bootstrap-email">E-mail</label><input id="bootstrap-email" name="email" type="email" maxlength="320" autocomplete="username" required>
+        <label for="bootstrap-password">Senha</label><input id="bootstrap-password" name="password" type="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+        <div id="bootstrap-token-field" class="hidden"><label for="bootstrap-token">Token de configuração</label><input id="bootstrap-token" name="bootstrap_token" type="password" autocomplete="off"></div>
+        <p id="bootstrap-error" class="form-error" role="alert"></p>
+        <div class="dialog-actions"><button id="bootstrap-cancel" class="button secondary" type="button">Cancelar</button><button class="button primary" type="submit">Criar e entrar</button></div>
+      </form>
+    </dialog>
+    <script src="/js/login.js?v=3"></script>
   </body>
 </html>
