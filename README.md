@@ -13,7 +13,7 @@ O projeto local contém:
 
 - API FastAPI com Swagger e ReDoc;
 - PostgreSQL via SQLAlchemy 2 e migration Alembic reproduzível;
-- autenticação JWT, senhas Argon2 e RBAC (`USER`, `MANAGER`, `IT_ADMIN`);
+- access token JWT curto, refresh token rotativo em cookie `HttpOnly`, senhas Argon2 e RBAC (`USER`, `MANAGER`, `IT_ADMIN`);
 - conversas, histórico e isolamento por proprietário;
 - upload validado de PDF, TXT, DOCX, XLSX, PNG, JPG e JPEG;
 - extração local, OCR com Tesseract e página de origem para PDFs;
@@ -195,6 +195,8 @@ O arquivo `output/pdf/regulamento_empresa_demo.pdf` contém um regulamento fict�
 | Variável | Finalidade | Padrão sugerido |
 |---|---|---|
 | `MAX_UPLOAD_SIZE_MB` | Limite por arquivo | `20` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Duração do access token mantido apenas na aba | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Duração máxima da sessão renovável | `14` |
 | `CHUNK_SIZE` | Tamanho aproximado do trecho | `1200` |
 | `CHUNK_OVERLAP` | Sobreposição entre trechos | `200` |
 | `RAG_TOP_K` | Máximo de trechos recuperados | `5` |
@@ -222,7 +224,10 @@ Ao apagar um documento, o arquivo local e seus vetores também são removidos. A
 ## Segurança
 
 - senhas com Argon2;
-- JWT assinado e expiração configurável;
+- JWT assinado, curto e com expiração configurável;
+- refresh tokens opacos, armazenados somente como hash, rotacionados a cada uso e enviados em cookie `HttpOnly` com `SameSite=Strict`;
+- access token mantido em `sessionStorage`, sem persistência entre sessões do navegador;
+- logout, troca de senha, alteração de função e bloqueio revogam sessões renováveis;
 - autorização no backend;
 - validação de conteúdo real e extensão do upload;
 - limite lido antes de persistir o arquivo;
@@ -230,7 +235,7 @@ Ao apagar um documento, o arquivo local e seus vetores também são removidos. A
 - consultas parametrizadas pelo ORM;
 - ausência de segredos nos logs.
 
-O logout JWT desta versão é client-side: o evento é auditado e o navegador remove o token. Não existe lista de revogação, evitando Redis e complexidade desnecessária nesta fase local.
+O logout incrementa a versão de segurança da conta, revoga os refresh tokens no PostgreSQL e remove o cookie da sessão. A renovação usa rotação de uso único: um token antigo não pode ser reutilizado depois de emitir o próximo.
 
 ## Custo do projeto e licenças
 
@@ -296,6 +301,7 @@ Essas escolhas mantêm o sistema simples, gratuito, defensável no TCC e pronto 
 - Chunks limitados pelos tokens do modelo; consultas longas divididas em janelas, sem descartar silenciosamente o final.
 - Resumos, comparação, checklist, plano de ação e exportações Markdown/HTML/JSON com fontes.
 - Troca de senha, revogação, limite de login, proteção do último administrador e seed não destrutivo.
+- Sessões renováveis com refresh token rotativo, cookie `HttpOnly` e revogação centralizada.
 - Diagnóstico, painel de qualidade, backup verificável e validação de migrations em PostgreSQL.
 
 Início habitual: .\scripts\start_ai_up.ps1 (abra o Ollama antes). Primeira instalação com contas demo: acrescente -Demo. A senha demo é somente inicial; contas existentes nunca são redefinidas automaticamente.

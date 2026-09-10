@@ -1,5 +1,12 @@
 # Verificação da evolução — 9 de setembro de 2026
 
+## Evolução de sessão — 10 de setembro de 2026
+
+- Migration `20260910_0004` validada desde um PostgreSQL vazio, sem divergências entre schema e modelos.
+- 64 testes passaram tanto em SQLite quanto no PostgreSQL isolado `ai_up_test_20260910_040758_304703`.
+- Login, rotação do refresh token, acesso com o novo JWT e revogação no logout foram conferidos também na API local real.
+- O refresh token é opaco, persiste somente como SHA-256 no banco e viaja em cookie `HttpOnly`, `SameSite=Strict`; o access token passou de armazenamento local persistente para a sessão da aba.
+
 ## Resultado
 
 Escopo local aprovado implementado: confiabilidade documental, inteligência contextual e usabilidade. Nenhuma conta existente foi redefinida. Nenhum documento original foi excluído. As alterações desta tarefa ainda não foram enviadas ao GitHub.

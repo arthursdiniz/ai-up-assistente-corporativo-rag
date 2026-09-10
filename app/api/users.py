@@ -9,11 +9,14 @@ from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.audit_service import AuditService
+from app.services.session_service import SessionService
+from app.core.config import get_settings
 
 
 router = APIRouter(prefix="/users", tags=["Usuários"])
 repository = UserRepository()
 audit_service = AuditService()
+session_service = SessionService(get_settings())
 admin_only = require_roles(UserRole.IT_ADMIN)
 
 
@@ -66,6 +69,7 @@ def update_user(
         setattr(user, field, value.strip() if field == "name" else value)
     if "active" in changes or "role" in changes:
         user.token_version += 1
+        session_service.revoke_all(db, user.id)
     action = "DISABLE_USER" if payload.active is False else "UPDATE_USER"
     audit_service.record(db, action, current_user.id, "user", str(user.id), details={"fields": list(changes)})
     db.commit()

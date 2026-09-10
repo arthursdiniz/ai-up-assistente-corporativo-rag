@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.models.audit_log import AuditLog
     from app.models.chat import Chat
     from app.models.document import Document
+    from app.models.refresh_token import RefreshToken
 
 
 class UserRole(str, enum.Enum):
@@ -36,3 +37,6 @@ class User(TimestampMixin, Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )

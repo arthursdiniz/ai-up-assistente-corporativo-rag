@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     database_port: int = 5432
     database_name: str = "ai_up"
     secret_key: str = Field(default="change-me", repr=False)
-    access_token_expire_minutes: int = 480
+    access_token_expire_minutes: int = Field(default=30, ge=5, le=1440)
+    refresh_token_expire_days: int = Field(default=14, ge=1, le=90)
 
     upload_dir: Path = Path("./data/uploads")
     chroma_dir: Path = Path("./data/chroma")

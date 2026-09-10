@@ -1,6 +1,13 @@
+from hashlib import sha256
+
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from tests.conftest import PASSWORD, auth_headers
+from app.db.session import SessionLocal
+from app.main import app
+from app.models.refresh_token import RefreshToken
+from app.services.session_service import SessionService
 
 
 def test_valid_login(client: TestClient) -> None:
@@ -28,3 +35,52 @@ def test_current_user(client: TestClient) -> None:
     response = client.get("/api/auth/me", headers=auth_headers(client))
     assert response.status_code == 200
     assert response.json()["email"] == "usuario@aiup.local"
+
+
+def test_refresh_token_is_httponly_hashed_and_rotated(client: TestClient) -> None:
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "usuario@aiup.local", "password": PASSWORD},
+    )
+    original = login.cookies.get(SessionService.cookie_name)
+    assert original
+    cookie = login.headers["set-cookie"].lower()
+    assert "httponly" in cookie and "samesite=strict" in cookie
+
+    with SessionLocal() as db:
+        stored = db.scalar(
+            select(RefreshToken).where(
+                RefreshToken.token_hash == sha256(original.encode()).hexdigest()
+            )
+        )
+        assert stored is not None
+        assert original != stored.token_hash
+
+    refreshed = client.post("/api/auth/refresh")
+    assert refreshed.status_code == 200
+    rotated = refreshed.cookies.get(SessionService.cookie_name)
+    assert rotated and rotated != original
+    assert client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {refreshed.json()['access_token']}"},
+    ).status_code == 200
+
+    with TestClient(app) as replay_client:
+        replay_client.cookies.set(
+            SessionService.cookie_name, original, path="/api/auth"
+        )
+        assert replay_client.post("/api/auth/refresh").status_code == 401
+
+
+def test_logout_revokes_refresh_session(client: TestClient) -> None:
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "usuario@aiup.local", "password": PASSWORD},
+    )
+    response = client.post(
+        "/api/auth/logout",
+        headers={"Authorization": f"Bearer {login.json()['access_token']}"},
+    )
+    assert response.status_code == 200
+    assert "max-age=0" in response.headers["set-cookie"].lower()
+    assert client.post("/api/auth/refresh").status_code == 401

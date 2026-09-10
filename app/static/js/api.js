@@ -1,9 +1,29 @@
 const TOKEN_KEY = "ai_up_access_token";
+let refreshPromise = null;
 
-async function apiRequest(path, options = {}) {
+async function refreshSession() {
+  if (!refreshPromise) {
+    refreshPromise = fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "same-origin",
+    }).then(async response => {
+      if (!response.ok) return false;
+      const body = await response.json();
+      sessionStorage.setItem(TOKEN_KEY, body.access_token);
+      return true;
+    }).catch(() => false);
+  }
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function apiRequest(path, options = {}, allowRefresh = true) {
   const {timeoutMs = 20000, ...requestOptions} = options;
   const headers = new Headers(requestOptions.headers || {});
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = sessionStorage.getItem(TOKEN_KEY);
   if (token) headers.set("Authorization", "Bearer " + token);
   if (requestOptions.body && !(requestOptions.body instanceof FormData)) headers.set("Content-Type", "application/json");
   const controller = new AbortController();
@@ -14,7 +34,10 @@ async function apiRequest(path, options = {}) {
   try {
     const response = await fetch(path, {...requestOptions, headers, signal:timeoutMs === 0 && requestOptions.signal ? requestOptions.signal : controller.signal});
     if (response.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
+      if (allowRefresh && path !== "/api/auth/refresh" && await refreshSession()) {
+        return apiRequest(path, options, false);
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
       location.href = "/login.html";
       throw new Error("Sua sessão terminou. Entre novamente.");
     }
@@ -73,7 +96,7 @@ async function loadCurrentUser() {
 async function logout() {
   try { await apiFetch("/api/auth/logout", {method:"POST"}); }
   catch (error) { showToast(error.message, "error"); return; }
-  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
   location.href = "/login.html";
 }
 
