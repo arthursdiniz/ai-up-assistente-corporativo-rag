@@ -8,6 +8,7 @@ from app.models.user import User, UserRole
 from app.models.generation import Generation
 from app.models.organization import Organization
 from app.models.team import Team, team_members
+from app.models.invitation import Invitation, invitation_teams
 
 __all__ = [
     "AuditLog",
@@ -25,4 +26,6 @@ __all__ = [
     "Organization",
     "Team",
     "team_members",
+    "Invitation",
+    "invitation_teams",
 ]

@@ -8,6 +8,7 @@ from app.db.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.audit_log import AuditLog
     from app.models.document import Document
+    from app.models.invitation import Invitation
     from app.models.team import Team
     from app.models.user import User
 
@@ -24,3 +25,6 @@ class Organization(TimestampMixin, Base):
     )
     documents: Mapped[list["Document"]] = relationship(back_populates="organization")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="organization")
+    invitations: Mapped[list["Invitation"]] = relationship(
+        back_populates="organization", cascade="all, delete-orphan"
+    )

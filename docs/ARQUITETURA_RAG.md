@@ -22,7 +22,7 @@ O limite de chunks considera o tokenizer real (modelo atual: 128 tokens máximos
 
 ## Persistência e recuperação
 
-PostgreSQL: usuários, documentos/seções/versões, conversas, mensagens, snapshots de fontes, jobs e auditoria. Chroma: vetores e metadados. Arquivos originais ficam em armazenamento local.
+PostgreSQL: organizações, equipes, convites, usuários, documentos/seções/versões, conversas, mensagens, snapshots de fontes, jobs e auditoria. Chroma: vetores e metadados. Arquivos originais ficam em armazenamento local.
 
 Reprocessamento prepara uma nova geração de vetores antes da substituição. A limpeza ocorre depois do commit; falhas preservam a geração anterior. Excluir um documento não apaga trechos já citados: a FK vira nula e o snapshot do nome/excerto permanece.
 
@@ -33,6 +33,8 @@ Jobs têm estado persistido e transmissão parcial em memória. Reconexão repet
 - Conversas, fontes e gerações são pessoais; leitura documental aceita propriedade ou compartilhamento explícito na mesma organização/equipe.
 - Alteração, reprocessamento e exclusão continuam reservados ao proprietário do documento.
 - Usuários, métricas e auditoria são filtrados por organização, inclusive para administradores.
+- Convites são credenciais temporárias aleatórias, persistidas somente como hash e consumidas sob bloqueio transacional.
+- Desativação com documentos transfere a propriedade antes de revogar as sessões, em uma única transação.
 - JWT contém versão revogável; logout, troca de senha e mudança de permissões invalidam sessões.
 - Último administrador ativo não pode ser rebaixado ou desativado.
 - Limitador de login em memória com limites por IP/identidade.

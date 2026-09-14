@@ -65,4 +65,12 @@ Conversas permanecem isoladas por proprietário. Todo usuário pertence a uma or
 
 Ao migrar uma instalação anterior, a migration cria `AI-Up Local`, associa todos os registros existentes a ela e preserva os documentos como privados. Para compartilhar, o proprietário usa **Organizar** na biblioteca. A busca recebe apenas IDs previamente autorizados no PostgreSQL; os vetores continuam locais e os chats continuam pessoais.
 
+## Onboarding e desligamento
+
+O administrador de TI pode gerar um convite no painel, escolher o perfil e as equipes iniciais e copiar o link para o canal corporativo apropriado. O AI-Up não envia e-mail nem depende de serviço externo. Por padrão, o link expira em 72 horas (`INVITATION_EXPIRE_HOURS`), funciona uma vez e pode ser revogado. Criar outro convite para o mesmo endereço invalida os anteriores ainda pendentes.
+
+O token não é armazenado em texto puro e fica depois de `#` no link, por isso não segue na requisição da página nem aparece no access log. Ainda assim, trate o link como credencial temporária: compartilhe apenas com o destinatário.
+
+Ao desativar uma conta pelo painel, escolha outro usuário ativo da mesma organização. A propriedade de todos os documentos é transferida na mesma transação e as sessões da conta desligada são revogadas. Conversas antigas permanecem vinculadas à conta inativa. Excluir uma equipe não exclui arquivos: documentos antes compartilhados com ela tornam-se privados para seus proprietários.
+
 Não há múltiplos servidores ou fila distribuída. A busca lexical examina no máximo `RAG_LEXICAL_SCAN_LIMIT` trechos; bases maiores exigem outro índice lexical e testes de escala. Não exponha este servidor diretamente à internet.

@@ -27,7 +27,7 @@ def main():
         if differences:
             print("Divergências entre migrations e modelos:",differences)
             raise SystemExit(1)
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20260910_0005"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20260910_0006"
         print("PostgreSQL: migrations e modelos compatíveis; tabelas:",len(inspect(connection).get_table_names()))
 
 

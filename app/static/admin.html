@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Administração — AI-Up</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/css/app.css?v=15">
+    <link rel="stylesheet" href="/css/app.css?v=16">
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -18,13 +18,18 @@
         <header class="page-header"><div><p class="section-label">VISÃO GERAL</p><h1>Administração</h1><p>Utilização, auditoria e usuários do ambiente local.</p></div></header>
         <section id="stats" class="stats-grid"></section>
         <section id="organization-panel" class="panel padded hidden"><div class="panel-header"><div><p class="section-label">ORGANIZAÇÃO</p><h2>Empresa e equipes</h2></div></div><form id="organization-form" class="inline-form"><label>Nome da empresa<input id="organization-name" minlength="2" maxlength="120" required></label><button class="button secondary">Salvar nome</button></form><form id="team-form" class="inline-form"><label>Nova equipe<input id="team-name" minlength="2" maxlength="120" placeholder="Ex.: Financeiro" required></label><button class="button primary">Criar equipe</button></form><div id="teams" class="document-grid"></div></section>
+        <section id="invitation-panel" class="panel padded hidden"><div class="panel-header"><div><p class="section-label">ONBOARDING</p><h2>Convites</h2><p>Gere um link temporário para a pessoa criar a própria senha.</p></div><button id="new-invitation" class="button primary">Novo convite</button></div><div id="invitations" class="log-list"></div></section>
         <section class="panel padded"><h2>Qualidade das respostas</h2><p>Amostra das últimas 500 respostas. Avaliações refletem feedback, não precisão científica.</p><div id="quality"></div></section><section class="admin-grid">
           <div class="panel"><div class="panel-header"><div><p class="section-label">AUDITORIA</p><h2>Atividades recentes</h2></div></div><div id="logs" class="log-list"></div><div class="dialog-actions"><button id="previous-logs" class="text-button">Anterior</button><span id="log-page"></span><button id="next-logs" class="text-button">Próxima</button></div></div>
           <div id="users-panel" class="panel hidden"><div class="panel-header"><div><p class="section-label">IT ADMIN</p><h2>Usuários</h2></div><button id="new-user" class="button secondary">Novo usuário</button></div><div id="users" class="user-list"></div></div>
         </section>
       </main>
     </div>
-    <dialog id="user-dialog" class="app-dialog"><form id="user-form"><h2>Novo usuário</h2><label>Nome<input name="name" required maxlength="120"></label><label>E-mail<input name="email" type="email" required></label><label>Senha inicial<input name="password" type="password" autocomplete="new-password" minlength="10" required></label><div class="dialog-actions"><button type="button" id="cancel-user" class="button secondary">Cancelar</button><button class="button primary">Criar usuário</button></div></form></dialog><div id="toast" class="toast"></div>
-    <script src="/js/api.js?v=14"></script><script src="/js/admin.js?v=12"></script>
+    <dialog id="user-dialog" class="app-dialog"><form id="user-form"><h2>Novo usuário</h2><label>Nome<input name="name" required maxlength="120"></label><label>E-mail<input name="email" type="email" required></label><label>Senha inicial<input name="password" type="password" autocomplete="new-password" minlength="10" required></label><div class="dialog-actions"><button type="button" id="cancel-user" class="button secondary">Cancelar</button><button class="button primary">Criar usuário</button></div></form></dialog>
+    <dialog id="invitation-dialog" class="app-dialog"><form id="invitation-form"><p class="section-label">NOVO ACESSO</p><h2>Convidar pessoa</h2><label>E-mail<input name="email" type="email" maxlength="320" required></label><label>Perfil<select name="role"><option value="USER">Usuário</option><option value="MANAGER">Gestor</option><option value="IT_ADMIN">Administrador</option></select></label><fieldset><legend>Equipes iniciais</legend><div id="invitation-teams" class="team-members"></div></fieldset><div class="dialog-actions"><button type="button" data-close="invitation-dialog" class="button secondary">Cancelar</button><button class="button primary">Gerar convite</button></div></form></dialog>
+    <dialog id="invitation-link-dialog" class="app-dialog"><div><p class="section-label">LINK GERADO</p><h2>Compartilhe com segurança</h2><p>O link aparece somente agora e expira automaticamente.</p><label>Link do convite<input id="invitation-link" readonly></label><div class="dialog-actions"><button type="button" data-close="invitation-link-dialog" class="button secondary">Fechar</button><button type="button" id="copy-invitation-link" class="button primary">Copiar link</button></div></div></dialog>
+    <dialog id="transfer-dialog" class="app-dialog"><form id="transfer-form"><p class="section-label">DESATIVAR CONTA</p><h2>Preservar documentos</h2><p id="transfer-copy"></p><label>Novo proprietário<select id="transfer-target" required></select></label><div class="dialog-actions"><button type="button" data-close="transfer-dialog" class="button secondary">Cancelar</button><button class="button danger">Transferir e desativar</button></div></form></dialog>
+    <div id="toast" class="toast"></div>
+    <script src="/js/api.js?v=14"></script><script src="/js/admin.js?v=13"></script>
   </body>
 </html>

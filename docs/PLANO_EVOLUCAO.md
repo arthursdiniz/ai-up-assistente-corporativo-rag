@@ -16,6 +16,8 @@ Escopo aprovado: confiabilidade, usabilidade, inteligência/demonstração e bas
 - [x] Migração, reindexação local e verificação no navegador.
 - [x] Organizações, equipes, membros e documentos privados/empresariais/por equipe.
 - [x] Isolamento de usuários, métricas, auditoria e recuperação RAG por organização.
+- [x] Convites de uso único, equipes iniciais e cadastro com senha definida pelo convidado.
+- [x] Renomear/excluir equipes e desligar usuários com transferência atômica de documentos.
 
 Mudanças na estrutura dos dados são precedidas de backup. Testes automatizados usam armazenamento isolado. As evidências de avaliação devem distinguir busca, qualidade de geração e avaliação humana; resultados sintéticos não representam precisão universal.
 

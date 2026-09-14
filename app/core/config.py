@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     secret_key: str = Field(default="change-me", repr=False)
     access_token_expire_minutes: int = Field(default=30, ge=5, le=1440)
     refresh_token_expire_days: int = Field(default=14, ge=1, le=90)
+    invitation_expire_hours: int = Field(default=72, ge=1, le=720)
     cors_allowed_origins: list[str] = Field(default_factory=list)
     bootstrap_token: SecretStr | None = Field(default=None, repr=False)
 

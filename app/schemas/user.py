@@ -41,6 +41,10 @@ class UserUpdate(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
+class UserDeactivate(BaseModel):
+    transfer_document_owner_id: int | None = None
+
+
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 

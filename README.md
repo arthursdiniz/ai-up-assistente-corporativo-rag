@@ -16,6 +16,7 @@ O projeto local contém:
 - access token JWT curto, refresh token rotativo em cookie `HttpOnly`, senhas Argon2 e RBAC (`USER`, `MANAGER`, `IT_ADMIN`);
 - conversas pessoais, histórico e isolamento por organização;
 - organizações e equipes com compartilhamento documental privado, empresarial ou por equipe;
+- onboarding por convite temporário de uso único, com perfil e equipes iniciais;
 - upload validado de PDF, TXT, DOCX, XLSX, PNG, JPG e JPEG;
 - extração local, OCR com Tesseract e página de origem para PDFs;
 - chunking configurável, Sentence Transformers e ChromaDB persistente;
@@ -200,6 +201,7 @@ O arquivo `output/pdf/regulamento_empresa_demo.pdf` contém um regulamento fict�
 | `MAX_UPLOAD_SIZE_MB` | Limite por arquivo | `20` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Duração do access token mantido apenas na aba | `30` |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | Duração máxima da sessão renovável | `14` |
+| `INVITATION_EXPIRE_HOURS` | Validade dos links de convite empresarial | `72` |
 | `CORS_ALLOWED_ORIGINS` | Lista JSON de origens web autorizadas | `[]` |
 | `BOOTSTRAP_TOKEN` | Segredo temporário para criar o primeiro administrador fora de desenvolvimento | vazio |
 | `CHUNK_SIZE` | Tamanho aproximado do trecho | `1200` |
@@ -237,6 +239,7 @@ Ao apagar um documento, o arquivo local e seus vetores também são removidos. A
 - autorização no backend;
 - isolamento multiempresa em usuários, documentos, métricas e auditoria;
 - compartilhamento explícito (`PRIVATE`, `ORGANIZATION` ou `TEAM`) e mutações reservadas ao proprietário;
+- convites armazenados somente como hash SHA-256; o token fica no fragmento da URL, não nos logs HTTP, e só pode ser aceito uma vez;
 - validação de conteúdo real e extensão do upload;
 - limite lido antes de persistir o arquivo;
 - nomes internos UUID e proteção contra *path traversal*;
@@ -328,6 +331,7 @@ Essas escolhas mantêm o sistema simples, gratuito, defensável no TCC e pronto 
 - Sessões renováveis com refresh token rotativo, cookie `HttpOnly` e revogação centralizada.
 - Diagnóstico, painel de qualidade, backup verificável e validação de migrations em PostgreSQL.
 - Empresas, equipes e bases de conhecimento compartilhadas com autorização aplicada também no pipeline RAG.
+- Convites empresariais, ciclo de vida das equipes e transferência de documentos antes da desativação de contas.
 
 Início habitual: .\scripts\start_ai_up.ps1 (abra o Ollama antes). Primeira instalação com contas demo: acrescente -Demo. A senha demo é somente inicial; contas existentes nunca são redefinidas automaticamente.
 

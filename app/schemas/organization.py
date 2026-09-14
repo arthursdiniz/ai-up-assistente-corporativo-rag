@@ -15,6 +15,10 @@ class TeamCreate(BaseModel):
         return normalized
 
 
+class TeamUpdate(TeamCreate):
+    pass
+
+
 class TeamMembersUpdate(BaseModel):
     user_ids: list[int] = Field(default_factory=list, max_length=500)
 

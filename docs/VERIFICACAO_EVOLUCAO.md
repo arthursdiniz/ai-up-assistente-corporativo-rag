@@ -1,5 +1,18 @@
 # Verificação da evolução — 9 de setembro de 2026
 
+## Onboarding empresarial — 10 de setembro de 2026
+
+- Migration `20260910_0006` validada desde um PostgreSQL vazio, com 14 tabelas e nenhuma divergência em relação aos modelos SQLAlchemy.
+- 83 testes passaram em SQLite e no PostgreSQL isolado `ai_up_test_20260910_211149_362623`.
+- Convites armazenam somente SHA-256 do token, expiram, podem ser revogados e falham após o primeiro aceite.
+- O link mantém o token no fragmento `#`; inspeção e aceite o enviam no corpo de requisições POST para evitar exposição em access logs.
+- Perfil e equipes são aplicados no cadastro; convites não permitem reutilização nem e-mail já cadastrado.
+- Renomear equipes preserva vínculos. Excluir equipe mantém documentos e os converte para privados.
+- Desativar uma conta com documentos exige um novo proprietário ativo da mesma organização; transferência, bloqueio e revogação de sessões ocorrem no mesmo commit.
+- A base principal foi protegida pelo backup verificado `data/backups/20260910T211344839269Z` e migrada para `20260910_0006` sem usuários ou documentos órfãos.
+- No navegador, a página de convite apresentou corretamente o estado inválido, sem erro de console ou overlay; o access log registrou apenas `/invite.html`, sem o fragmento usado no teste.
+- A página principal renovou a sessão, carregou 16 conversas e documentos com respostas HTTP 200; o rascunho existente na aba original não foi alterado.
+
 ## Organizações e bases compartilhadas — 10 de setembro de 2026
 
 - Migration `20260910_0005` validada desde um PostgreSQL vazio, com 12 tabelas e nenhuma divergência em relação aos modelos SQLAlchemy.

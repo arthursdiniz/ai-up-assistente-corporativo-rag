@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import get_settings
 from app.core.permissions import get_current_user
@@ -10,6 +11,11 @@ from app.models.user import User
 from app.schemas.auth import BootstrapRequest, BootstrapStatus, LoginRequest, TokenResponse
 from app.schemas.common import MessageResponse
 from app.schemas.user import UserRead
+from app.schemas.invitation import (
+    InvitationAcceptRequest,
+    InvitationInfo,
+    InvitationTokenRequest,
+)
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 from app.services.bootstrap_service import (
@@ -20,6 +26,7 @@ from app.services.bootstrap_service import (
 )
 from app.services.login_limiter import check_login, login_succeeded
 from app.services.session_service import SessionService
+from app.services.invitation_service import InvitationService, InvalidInvitation
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
@@ -28,6 +35,7 @@ audit_service = AuditService()
 settings = get_settings()
 session_service = SessionService(settings)
 bootstrap_service = BootstrapService(settings)
+invitation_service = InvitationService(settings)
 
 
 def set_refresh_cookie(response: Response, raw_token: str) -> None:
@@ -136,6 +144,60 @@ def login(
     set_refresh_cookie(response, refresh_token)
     return TokenResponse(
         access_token=create_access_token(str(user.id), token_version=user.token_version), user=UserRead.model_validate(user)
+    )
+
+
+@router.post("/invitations/inspect", response_model=InvitationInfo)
+def inspect_invitation(
+    payload: InvitationTokenRequest, db: Session = Depends(get_db)
+) -> InvitationInfo:
+    try:
+        invitation = invitation_service.require_pending(
+            invitation_service.get_by_token(db, payload.token)
+        )
+    except InvalidInvitation as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return InvitationInfo(
+        organization_name=invitation.organization.name,
+        email=invitation.email,
+        role=invitation.role,
+        expires_at=invitation.expires_at,
+    )
+
+
+@router.post(
+    "/invitations/accept",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def accept_invitation(
+    payload: InvitationAcceptRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    try:
+        accepted = invitation_service.accept(
+            db,
+            raw_token=payload.token,
+            name=payload.name,
+            password=payload.password,
+            ip_address=request.client.host if request.client else None,
+        )
+        db.commit()
+        db.refresh(accepted.user)
+    except InvalidInvitation as exc:
+        db.rollback()
+        raise HTTPException(409, str(exc)) from exc
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Não foi possível usar este convite.") from exc
+    set_refresh_cookie(response, accepted.refresh_token)
+    return TokenResponse(
+        access_token=create_access_token(
+            str(accepted.user.id), token_version=accepted.user.token_version
+        ),
+        user=UserRead.model_validate(accepted.user),
     )
 
 
