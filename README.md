@@ -182,6 +182,8 @@ pytest
 
 Os testes usam SQLite apenas como banco efêmero, embeddings determinísticos e `MockLLM`. A aplicação normal continua configurada para PostgreSQL, Sentence Transformers e Ollama.
 
+Para reproduzir os experimentos da defesa, veja o [relatório de validação do TCC](docs/RELATORIO_VALIDACAO_TCC.md). Ele reúne metodologia, resultados de recuperação e Ollama, carga HTTP isolada e links para o protocolo humano e a revisão de segurança.
+
 Para comparar a busca vetorial anterior com o pipeline híbrido atual:
 
 ```powershell

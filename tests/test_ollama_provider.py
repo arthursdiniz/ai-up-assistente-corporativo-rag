@@ -13,8 +13,8 @@ def test_ollama_receives_bounded_history_before_current_question(monkeypatch) ->
         def json(self) -> dict:
             return {"message": {"content": "A missão está no documento."}}
 
-    def fake_post(url, json, timeout):
-        captured.update(url=url, payload=json, timeout=timeout)
+    def fake_post(url, json, timeout, trust_env):
+        captured.update(url=url, payload=json, timeout=timeout, trust_env=trust_env)
         return FakeResponse()
 
     monkeypatch.setattr("app.services.llm.ollama_provider.httpx.post", fake_post)
@@ -47,3 +47,4 @@ def test_ollama_receives_bounded_history_before_current_question(monkeypatch) ->
     assert "dado não confiável" in SYSTEM_PROMPT
     assert "&lt;/documento&gt;" in messages[-1]["content"]
     assert captured["payload"]["options"] == {"temperature": 0.0, "num_predict": 1200, "num_ctx": 8192}
+    assert captured["trust_env"] is False

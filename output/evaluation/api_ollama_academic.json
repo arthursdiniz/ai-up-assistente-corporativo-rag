@@ -1,0 +1,130 @@
+{
+  "generated_at": "2026-11-11T16:51:02.630105+00:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "database": "temporary_sqlite",
+  "embedding": "hash",
+  "llm": "qwen3:4b-instruct",
+  "http": "loopback, one Uvicorn worker, synchronous index",
+  "generation_workers": 2,
+  "results": [
+    {
+      "workload": "rag_ollama_stream",
+      "workers": 1,
+      "operations": 4,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 1.08,
+      "client_and_server_cpu_seconds": 0.25,
+      "successful_latency": {
+        "mean_ms": 922.92,
+        "median_ms": 292.191,
+        "p95_ms": 2446.578
+      },
+      "results": [
+        {
+          "ms": 2825.313499999538,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": 2570.7154000001537,
+            "pipeline_retrieval_ms": 12
+          }
+        },
+        {
+          "ms": 283.9730999994572,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": null,
+            "pipeline_retrieval_ms": 7
+          }
+        },
+        {
+          "ms": 281.986599999982,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": null,
+            "pipeline_retrieval_ms": 10
+          }
+        },
+        {
+          "ms": 300.40869999993447,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": null,
+            "pipeline_retrieval_ms": 8
+          }
+        }
+      ],
+      "pipeline_retrieval": {
+        "mean_ms": 9.25,
+        "median_ms": 9.0,
+        "p95_ms": 11.7
+      },
+      "first_sse_delta": {
+        "mean_ms": 2570.715,
+        "median_ms": 2570.715,
+        "p95_ms": 2570.715
+      },
+      "first_sse_delta_samples": 1
+    },
+    {
+      "workload": "rag_ollama_stream",
+      "workers": 2,
+      "operations": 4,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 3.62,
+      "client_and_server_cpu_seconds": 0.2188,
+      "successful_latency": {
+        "mean_ms": 487.832,
+        "median_ms": 533.984,
+        "p95_ms": 561.308
+      },
+      "results": [
+        {
+          "ms": 318.2972000004156,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": null,
+            "pipeline_retrieval_ms": 9
+          }
+        },
+        {
+          "ms": 565.0624999998399,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": 317.3447999997734,
+            "pipeline_retrieval_ms": 9
+          }
+        },
+        {
+          "ms": 527.9324000002816,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": 280.23399999983667,
+            "pipeline_retrieval_ms": 9
+          }
+        },
+        {
+          "ms": 540.0353999993968,
+          "error": null,
+          "detail": {
+            "first_sse_delta_ms": 280.2104000002146,
+            "pipeline_retrieval_ms": 9
+          }
+        }
+      ],
+      "pipeline_retrieval": {
+        "mean_ms": 9,
+        "median_ms": 9.0,
+        "p95_ms": 9.0
+      },
+      "first_sse_delta": {
+        "mean_ms": 292.596,
+        "median_ms": 280.234,
+        "p95_ms": 313.634
+      },
+      "first_sse_delta_samples": 3
+    }
+  ]
+}

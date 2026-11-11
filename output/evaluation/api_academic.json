@@ -1,0 +1,1010 @@
+{
+  "generated_at": "2026-11-11T16:48:37.888818+00:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "database": "temporary_sqlite",
+  "embedding": "hash",
+  "llm": "mock",
+  "http": "loopback, one Uvicorn worker, synchronous index",
+  "results": [
+    {
+      "workload": "login",
+      "workers": 1,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 20.19,
+      "client_and_server_cpu_seconds": 1.5469,
+      "successful_latency": {
+        "mean_ms": 49.463,
+        "median_ms": 49.347,
+        "p95_ms": 50.87
+      },
+      "results": [
+        {
+          "ms": 48.75910000009753,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 48.1311999992613,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 48.21300000003248,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 49.55989999962185,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 49.13349999969796,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 49.916099999791186,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 49.77210000015475,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 48.75850000007631,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 48.924499999884574,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 51.14829999911308,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 50.642100000004575,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 50.59940000046481,
+          "error": null,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "workload": "document_list",
+      "workers": 1,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 247.24,
+      "client_and_server_cpu_seconds": 0.0469,
+      "successful_latency": {
+        "mean_ms": 3.993,
+        "median_ms": 3.768,
+        "p95_ms": 5.292
+      },
+      "results": [
+        {
+          "ms": 6.533299999318842,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.6223999995854683,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 4.275500000403554,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.945899999962421,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.3557999995537102,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.7536999998337706,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.467399999863119,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.8209000003917026,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.782300000239047,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 4.221000000143249,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.64010000066628,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 3.496600000289618,
+          "error": null,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "workload": "upload_and_index",
+      "workers": 1,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 31.11,
+      "client_and_server_cpu_seconds": 0.2812,
+      "successful_latency": {
+        "mean_ms": 32.093,
+        "median_ms": 31.823,
+        "p95_ms": 36.025
+      },
+      "results": [
+        {
+          "ms": 33.23400000044785,
+          "error": null,
+          "detail": 13
+        },
+        {
+          "ms": 32.674799999767856,
+          "error": null,
+          "detail": 14
+        },
+        {
+          "ms": 34.98029999991559,
+          "error": null,
+          "detail": 15
+        },
+        {
+          "ms": 32.529900000554335,
+          "error": null,
+          "detail": 16
+        },
+        {
+          "ms": 37.302599999748054,
+          "error": null,
+          "detail": 17
+        },
+        {
+          "ms": 30.229400000280293,
+          "error": null,
+          "detail": 18
+        },
+        {
+          "ms": 30.677900000227964,
+          "error": null,
+          "detail": 19
+        },
+        {
+          "ms": 31.771699999808334,
+          "error": null,
+          "detail": 20
+        },
+        {
+          "ms": 31.87419999994745,
+          "error": null,
+          "detail": 21
+        },
+        {
+          "ms": 30.242599999837694,
+          "error": null,
+          "detail": 22
+        },
+        {
+          "ms": 30.17089999957534,
+          "error": null,
+          "detail": 23
+        },
+        {
+          "ms": 29.426000000057684,
+          "error": null,
+          "detail": 24
+        }
+      ]
+    },
+    {
+      "workload": "rag_mock",
+      "workers": 1,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 65.94,
+      "client_and_server_cpu_seconds": 0.1719,
+      "successful_latency": {
+        "mean_ms": 15.109,
+        "median_ms": 14.49,
+        "p95_ms": 18.275
+      },
+      "results": [
+        {
+          "ms": 21.235100000012608,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 8
+          }
+        },
+        {
+          "ms": 14.068000000406755,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 13.93480000024283,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 14.479800000117393,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 15.115599999262486,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 13.924300000326184,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 15.111800000340736,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 15.852999999879103,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 13.814699999784352,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 4
+          }
+        },
+        {
+          "ms": 14.898100000209524,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        },
+        {
+          "ms": 14.499699999760196,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 4
+          }
+        },
+        {
+          "ms": 14.377999999851454,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 5
+          }
+        }
+      ],
+      "pipeline_retrieval": {
+        "mean_ms": 5.083,
+        "median_ms": 5.0,
+        "p95_ms": 6.35
+      }
+    },
+    {
+      "workload": "login",
+      "workers": 2,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 29.57,
+      "client_and_server_cpu_seconds": 1.8906,
+      "successful_latency": {
+        "mean_ms": 65.467,
+        "median_ms": 63.595,
+        "p95_ms": 78.07
+      },
+      "results": [
+        {
+          "ms": 68.9023000004454,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 89.27570000014384,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 60.04750000010972,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 64.83169999955862,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 63.83789999927103,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 64.67129999964527,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 63.35239999953046,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 62.023499999668275,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 62.81330000001617,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 64.90089999988413,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 62.216999999691325,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 58.735499999784224,
+          "error": null,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "workload": "document_list",
+      "workers": 2,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 312.55,
+      "client_and_server_cpu_seconds": 0.0312,
+      "successful_latency": {
+        "mean_ms": 6.186,
+        "median_ms": 6.221,
+        "p95_ms": 7.497
+      },
+      "results": [
+        {
+          "ms": 6.163699999888195,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 7.013899999947171,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 6.278300000303716,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 5.757699999776378,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 8.086699999694247,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 5.13409999985015,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 6.415699999706703,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 6.740100000570237,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 6.477400000221678,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 5.942400000094494,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 5.55039999926521,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 4.673800000091433,
+          "error": null,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "workload": "upload_and_index",
+      "workers": 2,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 28.91,
+      "client_and_server_cpu_seconds": 0.3125,
+      "successful_latency": {
+        "mean_ms": 67.247,
+        "median_ms": 64.554,
+        "p95_ms": 92.949
+      },
+      "results": [
+        {
+          "ms": 44.08439999951952,
+          "error": null,
+          "detail": 25
+        },
+        {
+          "ms": 75.01429999956599,
+          "error": null,
+          "detail": 26
+        },
+        {
+          "ms": 65.37879999996221,
+          "error": null,
+          "detail": 27
+        },
+        {
+          "ms": 54.24609999954555,
+          "error": null,
+          "detail": 28
+        },
+        {
+          "ms": 114.87020000004122,
+          "error": null,
+          "detail": 30
+        },
+        {
+          "ms": 59.3736999999237,
+          "error": null,
+          "detail": 29
+        },
+        {
+          "ms": 63.68579999980284,
+          "error": null,
+          "detail": 31
+        },
+        {
+          "ms": 63.729099999363825,
+          "error": null,
+          "detail": 32
+        },
+        {
+          "ms": 69.27040000027773,
+          "error": null,
+          "detail": 33
+        },
+        {
+          "ms": 68.82130000030884,
+          "error": null,
+          "detail": 34
+        },
+        {
+          "ms": 70.87310000042635,
+          "error": null,
+          "detail": 35
+        },
+        {
+          "ms": 57.616500000222004,
+          "error": null,
+          "detail": 36
+        }
+      ]
+    },
+    {
+      "workload": "rag_mock",
+      "workers": 2,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 66.27,
+      "client_and_server_cpu_seconds": 0.1875,
+      "successful_latency": {
+        "mean_ms": 29.351,
+        "median_ms": 24.126,
+        "p95_ms": 49.882
+      },
+      "results": [
+        {
+          "ms": 37.52269999949931,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 11
+          }
+        },
+        {
+          "ms": 23.143200000049546,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 11
+          }
+        },
+        {
+          "ms": 19.3862000005538,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 7
+          }
+        },
+        {
+          "ms": 57.86439999974391,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 8
+          }
+        },
+        {
+          "ms": 15.891800000645162,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 6
+          }
+        },
+        {
+          "ms": 21.272800000588177,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 10
+          }
+        },
+        {
+          "ms": 21.47289999993518,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 6
+          }
+        },
+        {
+          "ms": 25.109499999416585,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 8
+          }
+        },
+        {
+          "ms": 27.176899999176385,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 8
+          }
+        },
+        {
+          "ms": 37.95390000050247,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 13
+          }
+        },
+        {
+          "ms": 43.35160000027827,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 9
+          }
+        },
+        {
+          "ms": 22.06540000042878,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 8
+          }
+        }
+      ],
+      "pipeline_retrieval": {
+        "mean_ms": 8.75,
+        "median_ms": 8.0,
+        "p95_ms": 11.9
+      }
+    },
+    {
+      "workload": "login",
+      "workers": 4,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 35.97,
+      "client_and_server_cpu_seconds": 2.8125,
+      "successful_latency": {
+        "mean_ms": 105.979,
+        "median_ms": 105.754,
+        "p95_ms": 124.821
+      },
+      "results": [
+        {
+          "ms": 114.04940000011266,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 109.1415999999299,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 130.22579999960726,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 120.39920000006532,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 99.38160000001517,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 88.75220000027184,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 118.55280000054336,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 99.07980000025418,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 114.21640000025945,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 87.65189999940048,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 102.3667999997997,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 87.92730000004667,
+          "error": null,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "workload": "document_list",
+      "workers": 4,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 302.51,
+      "client_and_server_cpu_seconds": 0.0469,
+      "successful_latency": {
+        "mean_ms": 11.869,
+        "median_ms": 11.553,
+        "p95_ms": 15.672
+      },
+      "results": [
+        {
+          "ms": 16.820499999994354,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 10.144799999579845,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 14.731799999935902,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 14.168500000778295,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 10.48220000029687,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 12.94300000063231,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 11.561999999685213,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 11.56040000023495,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 11.54560000031779,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 8.908800000426709,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 10.384100000010221,
+          "error": null,
+          "detail": null
+        },
+        {
+          "ms": 9.179600000607024,
+          "error": null,
+          "detail": null
+        }
+      ]
+    },
+    {
+      "workload": "upload_and_index",
+      "workers": 4,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 27.0,
+      "client_and_server_cpu_seconds": 0.3281,
+      "successful_latency": {
+        "mean_ms": 134.863,
+        "median_ms": 143.55,
+        "p95_ms": 170.223
+      },
+      "results": [
+        {
+          "ms": 70.43130000056408,
+          "error": null,
+          "detail": 37
+        },
+        {
+          "ms": 169.88240000046062,
+          "error": null,
+          "detail": 40
+        },
+        {
+          "ms": 98.3141999995496,
+          "error": null,
+          "detail": 38
+        },
+        {
+          "ms": 135.99409999915224,
+          "error": null,
+          "detail": 39
+        },
+        {
+          "ms": 149.22130000013567,
+          "error": null,
+          "detail": 41
+        },
+        {
+          "ms": 154.34629999981553,
+          "error": null,
+          "detail": 42
+        },
+        {
+          "ms": 169.43840000021737,
+          "error": null,
+          "detail": 43
+        },
+        {
+          "ms": 170.63859999962006,
+          "error": null,
+          "detail": 44
+        },
+        {
+          "ms": 146.31350000036036,
+          "error": null,
+          "detail": 45
+        },
+        {
+          "ms": 140.78580000023067,
+          "error": null,
+          "detail": 46
+        },
+        {
+          "ms": 109.98250000011467,
+          "error": null,
+          "detail": 47
+        },
+        {
+          "ms": 103.00629999983357,
+          "error": null,
+          "detail": 48
+        }
+      ]
+    },
+    {
+      "workload": "rag_mock",
+      "workers": 4,
+      "operations": 12,
+      "errors": 0,
+      "error_rate": 0.0,
+      "throughput_ops_s": 53.53,
+      "client_and_server_cpu_seconds": 0.25,
+      "successful_latency": {
+        "mean_ms": 66.64,
+        "median_ms": 70.914,
+        "p95_ms": 105.499
+      },
+      "results": [
+        {
+          "ms": 94.09789999972418,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 22
+          }
+        },
+        {
+          "ms": 43.711199999961536,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 19
+          }
+        },
+        {
+          "ms": 70.97260000045935,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 20
+          }
+        },
+        {
+          "ms": 108.72589999962656,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 19
+          }
+        },
+        {
+          "ms": 17.828600000029837,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 7
+          }
+        },
+        {
+          "ms": 70.85450000067794,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 18
+          }
+        },
+        {
+          "ms": 72.48550000076648,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 30
+          }
+        },
+        {
+          "ms": 102.85810000004858,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 34
+          }
+        },
+        {
+          "ms": 54.289300000164076,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 7
+          }
+        },
+        {
+          "ms": 72.59630000044126,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 26
+          }
+        },
+        {
+          "ms": 32.966400000077556,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 7
+          }
+        },
+        {
+          "ms": 58.2884000004924,
+          "error": null,
+          "detail": {
+            "pipeline_retrieval_ms": 27
+          }
+        }
+      ],
+      "pipeline_retrieval": {
+        "mean_ms": 19.667,
+        "median_ms": 19.5,
+        "p95_ms": 31.8
+      }
+    }
+  ]
+}

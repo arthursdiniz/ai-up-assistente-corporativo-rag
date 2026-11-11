@@ -8,9 +8,11 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.chat import Chat
 from app.models.generation import Generation
+from app.models.message import Message
 from app.models.user import User
 from app.services.rag_service import RAGService, GenerationCancelled
 from app.services.llm.base import LLMUnavailableError
+from app.services.evidence_access import CONTEXT_IDS, OWNED_CONTEXT_IDS
 
 
 @dataclass
@@ -18,6 +20,7 @@ class RunningGeneration:
     cancel: Event = field(default_factory=Event)
     lock: RLock = field(default_factory=RLock)
     text: str = ""
+    document_ids: frozenset[int] = field(default_factory=frozenset)
     committed: bool = False
     created: float = field(default_factory=monotonic)
 
@@ -59,6 +62,9 @@ def run(generation_id, state):
             elif kind == "stage":
                 job.stage = value
                 db.commit()
+        def set_scope(ids):
+            with state.lock:
+                state.document_ids = frozenset(ids)
         try:
             user = db.get(User, job.user_id)
             chat = db.get(Chat, job.chat_id)
@@ -67,10 +73,13 @@ def run(generation_id, state):
             service = RAGService(get_settings())
             result = service.ask(db, chat, user, job.question, emit=emit,
                 cancelled=state.cancel.is_set, retry_message_id=job.retry_message_id,
-                final_lock=state.lock, committed=lambda:setattr(state, "committed", True))
+                final_lock=state.lock, committed=lambda:setattr(state, "committed", True),
+                set_scope=set_scope)
             with state.lock:
                 job.status, job.stage = "done", "Concluído"
-                job.result = result.model_dump(mode="json")
+                provenance = db.get(Message, result.message_id).metrics
+                job.result = {**result.model_dump(mode="json"), CONTEXT_IDS: provenance[CONTEXT_IDS],
+                              OWNED_CONTEXT_IDS: provenance[OWNED_CONTEXT_IDS]}
                 db.commit()
         except GenerationCancelled:
             db.rollback()

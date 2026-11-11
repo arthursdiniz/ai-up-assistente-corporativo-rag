@@ -153,7 +153,7 @@ class VectorStoreService:
             return []
         pool_size = max(top_k, candidate_pool)
         semantic = self.search(user_id, query_embedding, pool_size, document_ids, generations)
-        lexical = self._lexical_search(
+        lexical = self.lexical_search(
             user_id, query_text, pool_size, lexical_scan_limit, document_ids, generations
         )
 
@@ -187,10 +187,10 @@ class VectorStoreService:
                     location=base.location,
                 )
             )
-        combined.sort(key=lambda chunk: chunk.relevance_score, reverse=True)
+        combined.sort(key=lambda chunk: (-chunk.relevance_score, chunk.chunk_id))
         return self._deduplicate(combined)[:top_k]
 
-    def _lexical_search(
+    def lexical_search(
         self,
         user_id: int | None,
         query_text: str,
@@ -200,18 +200,19 @@ class VectorStoreService:
         generations=None,
     ) -> list[RetrievedChunk]:
         query_terms = self._terms(query_text)
-        if not query_terms:
+        if not query_terms or document_ids == []:
             return []
-        cache_key = (id(self.collection), user_id, tuple(document_ids or []), tuple(sorted((generations or {}).items())), scan_limit)
+        cache_key = (id(self.collection), user_id, tuple(sorted(document_ids)) if document_ids is not None else None,
+                     tuple(sorted((generations or {}).items())), scan_limit)
         cached = _lexical_cache.get(cache_key)
-        if cached and time.monotonic() - cached[0] < 60:
-            result, tokenized = cached[1:]
+        if cached and cached[1] is self.collection and time.monotonic() - cached[0] < 60:
+            result, tokenized = cached[2:]
         else:
             result = self.collection.get(where=self._where(user_id, document_ids, generations), include=["documents", "metadatas"], limit=scan_limit)
             tokenized = [self._terms(f'{text or ""} {(metadata or {}).get("filename", "")}') for text, metadata in zip(result.get("documents") or [], result.get("metadatas") or [])]
             if len(_lexical_cache) > 32:
                 _lexical_cache.clear()
-            _lexical_cache[cache_key] = (time.monotonic(), result, tokenized)
+            _lexical_cache[cache_key] = (time.monotonic(), self.collection, result, tokenized)
         ids = result.get("ids", [])
         documents = result.get("documents") or []
         metadatas = result.get("metadatas") or []

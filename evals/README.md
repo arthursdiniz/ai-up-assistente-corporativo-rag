@@ -2,9 +2,9 @@
 
 Os arquivos corpus.json e cases.json são sintéticos e públicos no repositório. Nunca substitua esses fixtures por documentos privados.
 
-Há duas avaliações distintas:
+As avaliações originais continuam disponíveis:
 
 - evaluate_ai.py: busca vetorial/híbrida em 20 casos. Usa seções já extraídas; não mede OCR, chunking da ingestão, qualidade textual ou tempo total.
 - evaluate_generation.py: seis fixtures controlados com Ollama. Mede preservação literal, resposta ausente, continuidade e uma tentativa de injeção. Não mede robustez geral.
 
-Protocolo humano recomendado para a banca: selecionar 30 perguntas inéditas sobre documentos de demonstração; incluir perguntas factuais, continuação, mudança de assunto, comparação, resumo e informação ausente. Dois avaliadores independentes atribuem 0–2 a cada critério: fidelidade, completude, utilidade e verificabilidade. Registrar divergências, latência total, versão/modelo/configuração e exemplos de falha. Não publicar uma média sem informar amostra, rubrica e quantidade de recusas. Feedback no aplicativo é útil para priorizar problemas, mas não substitui esse protocolo.
+O conjunto acadêmico ampliado está em `academic_cases.py`. Execute `scripts/benchmark_retrieval.py`, `scripts/benchmark_models.py` e `scripts/benchmark_api.py` conforme o [relatório de validação](../docs/RELATORIO_VALIDACAO_TCC.md). Os procedimentos separam recuperação, geração e carga. A etapa com pessoas usa o [protocolo de avaliação humana](../docs/PROTOCOLO_AVALIACAO_HUMANA.md).

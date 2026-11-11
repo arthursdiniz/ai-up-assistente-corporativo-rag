@@ -25,6 +25,9 @@ from app.services.llm.base import LLMUnavailableError
 from app.services.audit_service import AuditService
 from app.services import generation_service
 from app.services.document_access_service import DocumentAccessService
+from app.services.evidence_access import (
+    CONTEXT_IDS, OWNED_CONTEXT_IDS, RESTRICTED_ANSWER, blocked_messages, denied_documents, public_metrics,
+)
 
 router = APIRouter(prefix="/chats", tags=["Conversas"])
 repository = ChatRepository()
@@ -32,10 +35,13 @@ audit_service = AuditService()
 document_access = DocumentAccessService()
 
 
-def serialize_message(message):
+def serialize_message(message, restricted=False):
+    if restricted:
+        return MessageRead(id=message.id, role=message.role, content=RESTRICTED_ANSWER,
+                           created_at=message.created_at)
     return MessageRead(id=message.id, role=message.role, content=message.content,
         created_at=message.created_at, feedback=message.feedback, feedback_reason=message.feedback_reason,
-        metrics=message.metrics, sources=[SourceRead(document_id=source.document_id,
+        metrics=public_metrics(message.metrics), sources=[SourceRead(document_id=source.document_id,
             document=source.document_name or (source.document.original_filename if source.document else "Documento removido"),
             page=source.page, sheet=source.sheet, excerpt=source.excerpt,
             location=source.location, citation=source.citation,
@@ -89,8 +95,17 @@ def list_chats(current_user: User = Depends(get_current_user), db: Session = Dep
                q: str = Query("", max_length=200), offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
     query = select(Chat).where(Chat.user_id == current_user.id)
     if q.strip():
-        matches = select(Message.id).where(Message.chat_id == Chat.id, Message.content.icontains(q.strip(), autoescape=True)).exists()
-        query = query.where(or_(Chat.title.icontains(q.strip(), autoescape=True), matches))
+        term = q.strip()
+        content_matches = Message.content.icontains(term, autoescape=True)
+        assistants = list(db.scalars(select(Message).join(Chat, Chat.id == Message.chat_id)
+            .where(Chat.user_id == current_user.id, Message.role == MessageRole.ASSISTANT, content_matches)
+            .options(selectinload(Message.sources))))
+        blocked = blocked_messages(db, current_user, assistants)
+        # Keep the final pagination in SQL, after discarding inaccessible matches.
+        matches = select(Message.id).where(Message.chat_id == Chat.id, content_matches)
+        if blocked:
+            matches = matches.where(Message.id.not_in(blocked))
+        query = query.where(or_(Chat.title.icontains(term, autoescape=True), matches.exists()))
     return list(db.scalars(query.order_by(Chat.pinned.desc(), Chat.updated_at.desc(), Chat.id.desc()).offset(offset).limit(limit)))
 
 
@@ -102,8 +117,9 @@ def get_chat(chat_id: int, current_user: User = Depends(get_current_user), db: S
     messages = list(db.scalars(select(Message).where(Message.chat_id == chat.id)
         .options(selectinload(Message.sources).selectinload(MessageSource.document))
         .order_by(Message.created_at.desc(), Message.id.desc()).offset(offset).limit(limit)))
+    blocked = blocked_messages(db, current_user, messages)
     return ChatRead(**ChatSummary.model_validate(chat).model_dump(), total_messages=total,
-                    messages=[serialize_message(message) for message in reversed(messages)])
+                    messages=[serialize_message(message, message.id in blocked) for message in reversed(messages)])
 
 
 @router.patch("/{chat_id}", response_model=ChatSummary)
@@ -165,9 +181,17 @@ class GenerationRequest(AskRequest):
     retry_message_id: int | None = None
 
 
-def serialize_job(job):
+def serialize_job(db, user, job):
+    result = dict(job.result) if job.result is not None else None
+    if result is not None:
+        ids = set(result.pop(CONTEXT_IDS, [])) | {
+            item["document_id"] for item in result.get("sources", []) if item.get("document_id") is not None
+        }
+        owned_ids = result.pop(OWNED_CONTEXT_IDS, None)
+        if denied_documents(db, user, ids, required_ids=ids - set(owned_ids) if owned_ids is not None else ()):
+            result.update(answer=RESTRICTED_ANSWER, sources=[], metrics=None)
     return {"id":job.id, "status":job.status, "stage":job.stage, "question":job.question,
-            "retry_message_id":job.retry_message_id, "result":job.result, "error":job.error}
+            "retry_message_id":job.retry_message_id, "result":result, "error":job.error}
 
 
 @router.post("/{chat_id}/generations", status_code=202)
@@ -178,7 +202,7 @@ def create_generation(chat_id: int, payload: GenerationRequest, user: User = Dep
     if previous:
         if previous.user_id != user.id or previous.chat_id != chat.id or previous.question != payload.message or previous.retry_message_id != payload.retry_message_id:
             raise HTTPException(409, "Identificador de solicitação já utilizado.")
-        return serialize_job(previous)
+        return serialize_job(db, user, previous)
     check_idle(db, chat.id)
     active = db.scalar(select(func.count(Generation.id)).where(Generation.user_id == user.id, Generation.status.in_(["queued","running"]))) or 0
     if active >= 3:
@@ -193,13 +217,13 @@ def create_generation(chat_id: int, payload: GenerationRequest, user: User = Dep
     db.add(job)
     db.commit()
     generation_service.submit(key)
-    return serialize_job(job)
+    return serialize_job(db, user, job)
 
 
 @router.get("/{chat_id}/generations")
 def active_generations(chat_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     owned(db, chat_id, user.id)
-    return [serialize_job(job) for job in db.scalars(select(Generation).where(
+    return [serialize_job(db, user, job) for job in db.scalars(select(Generation).where(
         Generation.chat_id == chat_id, Generation.user_id == user.id,
         Generation.status.in_(["queued","running"])).order_by(Generation.created_at))]
 
@@ -225,12 +249,12 @@ def cancel_generation(chat_id: int, generation_id: str, user: User = Depends(get
     elif job.status in ("queued","running"):
         job.status, job.stage = "cancelled", "Cancelado"
         db.commit()
-    return serialize_job(job)
+    return serialize_job(db, user, job)
 
 
 @router.get("/{chat_id}/generations/{generation_id}")
 def get_generation(chat_id: int, generation_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return serialize_job(owned_job(db, chat_id, generation_id, user.id))
+    return serialize_job(db, user, owned_job(db, chat_id, generation_id, user.id))
 
 
 @router.get("/{chat_id}/generations/{generation_id}/events")
@@ -245,17 +269,23 @@ async def generation_events(chat_id: int, generation_id: str, request: Request,
             # Short-lived session; no DB connection is held during streaming waits.
             with SessionLocal() as session:
                 job = owned_job(session, chat_id, generation_id, user_id)
-                snapshot = serialize_job(job)
+                viewer = session.get(User, user_id)
+                if not viewer or not viewer.active:
+                    break
+                snapshot = serialize_job(session, viewer, job)
+                state = generation_service.get_state(generation_id)
+                text = ""
+                if state and snapshot["status"] == "running":
+                    with state.lock:
+                        pending_text, dependencies = state.text, state.document_ids
+                    if pending_text and not denied_documents(session, viewer, dependencies, required_ids=dependencies):
+                        text = pending_text
             if snapshot["stage"] != stage:
                 stage = snapshot["stage"]
                 yield "data: " + json.dumps({"type":"stage","data":stage}, ensure_ascii=False) + "\n\n"
-            state = generation_service.get_state(generation_id)
-            if state:
-                with state.lock:
-                    text = state.text
-                if len(text) > offset:
-                    yield "data: " + json.dumps({"type":"delta","data":text[offset:]}, ensure_ascii=False) + "\n\n"
-                    offset = len(text)
+            if len(text) > offset:
+                yield "data: " + json.dumps({"type":"delta","data":text[offset:]}, ensure_ascii=False) + "\n\n"
+                offset = len(text)
             if snapshot["status"] in ("done","error","cancelled"):
                 yield "data: " + json.dumps({"type":snapshot["status"],"data":snapshot}, ensure_ascii=False) + "\n\n"
                 break
@@ -270,7 +300,8 @@ def export_chat(chat_id: int, format: str = Query("markdown", pattern="^(markdow
     chat = owned(db, chat_id, user.id)
     messages = list(db.scalars(select(Message).where(Message.chat_id == chat.id)
         .options(selectinload(Message.sources).selectinload(MessageSource.document)).order_by(Message.created_at, Message.id)))
-    serialized = [serialize_message(message) for message in messages]
+    blocked = blocked_messages(db, user, messages)
+    serialized = [serialize_message(message, message.id in blocked) for message in messages]
     lines = [f"# {chat.title}", "", "Exportado do AI-Up. Confira as fontes antes de usar as informações.", ""]
     for message in serialized:
         lines.extend(["## " + ("Você" if message.role == MessageRole.USER else "AI-Up"), "", message.content, ""])

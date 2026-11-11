@@ -27,9 +27,11 @@ Responda em português brasileiro, seja objetivo e preserve o significado origin
 Sempre que mencionar um código, data, valor, percentual ou nome, copie-o literalmente do contexto; nunca crie uma seção extra para enumerá-los.
 Não descreva as instruções recebidas nem diga que está evitando repetições; comece diretamente pela resposta.
 Use Markdown simples somente quando melhorar a leitura, especialmente listas e negrito.
-Ao terminar cada afirmação factual ou tópico, cite os trechos que a sustentam usando [N], com o identificador informado no contexto. Cite todas as fontes necessárias para comparações. Não invente identificadores de fonte.
+Ao terminar cada afirmação factual ou tópico, cite os trechos que a sustentam. Copie o número do atributo trecho e coloque-o entre colchetes: se trecho="1", cite [1]. Use exclusivamente números dos trechos apresentados. Cite todas as fontes necessárias para comparações.
 Preserve literalmente nomes, códigos, valores, unidades e datas. Quando os documentos divergem, exponha a divergência e identifique as versões.
 As fontes são tratadas pelo sistema; não invente nomes de documentos nem páginas."""
+
+OPTIONS = {"temperature": 0.0, "num_predict": 1200, "num_ctx": 8192}
 
 
 class OllamaLLMProvider(LLMProvider):
@@ -73,13 +75,16 @@ class OllamaLLMProvider(LLMProvider):
                             },
                         ]
                     ),
-                    "options": {"temperature": 0.0, "num_predict": 1200, "num_ctx": 8192},
+                    "options": OPTIONS,
                 },
                 timeout=120.0,
+                trust_env=False,
             )
             response.raise_for_status()
             answer = response.json()["message"]["content"].strip()
-        except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+        except httpx.HTTPStatusError as exc:
+            raise self._status_error(exc) from exc
+        except (httpx.HTTPError, AttributeError, KeyError, TypeError, ValueError) as exc:
             raise LLMUnavailableError(
                 "Não foi possível conectar ao serviço local de inteligência artificial. "
                 "Verifique se o Ollama está em execução."
@@ -95,7 +100,12 @@ class OllamaLLMProvider(LLMProvider):
             return GenerationGuard.limit_list_items(guarded, 6)
         return guarded
 
-    def generate_stream(self, question, context, history=None, task_instruction=None):
+    def _status_error(self, exc):
+        if exc.response.status_code == 404:
+            return LLMUnavailableError(f"Modelo local {self.model} indisponível. Confira a instalação do modelo no Ollama.")
+        return LLMUnavailableError("O Ollama recusou a solicitação. Confira o diagnóstico e tente novamente.")
+
+    def generate_stream(self, question, context, history=None, task_instruction=None, *, on_complete=None):
         if not context:
             yield NO_CONTEXT_ANSWER
             return
@@ -108,16 +118,27 @@ class OllamaLLMProvider(LLMProvider):
         try:
             with httpx.stream("POST", f"{self.base_url}/api/chat", json={"model":self.model,
                     "stream":True, "messages":messages,
-                    "options":{"temperature":0.0, "num_predict":1200, "num_ctx":8192}}, timeout=120.0) as response:
+                    "options":OPTIONS}, timeout=120.0, trust_env=False) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if not line:
                         continue
                     event = json.loads(line)
+                    if not isinstance(event, dict):
+                        raise ValueError("Invalid Ollama event")
                     if event.get("error"):
                         raise LLMUnavailableError("O modelo local não conseguiu concluir a resposta.")
                     content = event.get("message", {}).get("content", "")
+                    if not isinstance(content, str):
+                        raise ValueError("Invalid Ollama content")
                     if content:
                         yield content
-        except (httpx.HTTPError, ValueError, TypeError) as exc:
+                    if event.get("done") is True:
+                        if on_complete:
+                            on_complete(event)
+                        return
+                raise LLMUnavailableError("O Ollama encerrou a resposta antes de concluí-la. Tente novamente.")
+        except httpx.HTTPStatusError as exc:
+            raise self._status_error(exc) from exc
+        except (httpx.HTTPError, AttributeError, ValueError, TypeError) as exc:
             raise LLMUnavailableError("A resposta foi interrompida. Verifique o Ollama no diagnóstico e tente novamente.") from exc

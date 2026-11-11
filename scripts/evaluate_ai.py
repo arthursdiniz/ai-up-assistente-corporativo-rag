@@ -7,6 +7,7 @@ from pathlib import Path
 from statistics import mean
 import sys
 from time import perf_counter
+from uuid import uuid4
 
 import chromadb
 
@@ -69,7 +70,7 @@ def precision(results: list[RetrievedChunk], case: dict) -> float:
 def build_index(settings: Settings, corpus: list[dict]) -> VectorStoreService:
     client = chromadb.EphemeralClient()
     collection = client.get_or_create_collection(
-        "ai_up_evaluation", metadata={"hnsw:space": "cosine"}
+        f"ai_up_evaluation_{uuid4().hex}", metadata={"hnsw:space": "cosine"}
     )
     texts = [item["text"] for item in corpus]
     embeddings = EmbeddingService(settings).embed_documents(texts)

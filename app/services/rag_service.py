@@ -7,7 +7,7 @@ import unicodedata
 
 from fastapi import HTTPException
 from sqlalchemy import select, delete
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.core.config import Settings
 from app.models.chat import Chat
 from app.models.document import Document, DocumentStatus
@@ -18,7 +18,9 @@ from app.schemas.chat import AskResponse, SourceRead
 from app.services.audit_service import AuditService
 from app.services.embedding_service import EmbeddingService
 from app.services.llm import get_llm_provider
-from app.services.llm.base import ConversationMessage, NO_CONTEXT_ANSWER
+from app.services.llm.base import ConversationMessage, LLMUnavailableError, NO_CONTEXT_ANSWER
+from app.services.evidence_access import CONTEXT_IDS, OWNED_CONTEXT_IDS, blocked_messages, denied_documents, message_dependencies
+from app.services.generation_guard import GenerationGuard
 from app.services.query_analysis_service import QuestionAnalysisService, QueryIntent
 from app.services.reranking_service import RerankingService
 from app.services.retrieval_policy import RetrievalPolicy
@@ -37,7 +39,7 @@ class RAGService:
         self.document_access = DocumentAccessService()
 
     def ask(self, db: Session, chat: Chat, user: User, question: str, *,
-            emit=None, cancelled=None, retry_message_id=None, final_lock=None, committed=None) -> AskResponse:
+            emit=None, cancelled=None, retry_message_id=None, final_lock=None, committed=None, set_scope=None) -> AskResponse:
         start = perf_counter()
         def progress(stage):
             if cancelled and cancelled():
@@ -47,12 +49,13 @@ class RAGService:
 
         progress("Interpretando a pergunta")
         question = question.strip()
-        history = self._recent_history(db, chat.id, before_id=retry_message_id)
+        history, history_ids = self._recent_history(db, chat.id, user, before_id=retry_message_id)
         analysis = QuestionAnalysisService.analyze(question, bool(history))
         documents, explicit_scope = self._scope(db, chat, user, question, analysis.uses_history)
         if explicit_scope and documents and analysis.clarification:
             analysis = replace(analysis, clarification=None, intent=QueryIntent.FACTUAL)
         query = self._build_retrieval_query(question, history)
+        dependencies = set()
         retrieved, relevant = [], []
         metrics = {"intent":analysis.intent.value, "contextualized":analysis.uses_history,
                    "scope_count":len(documents)}
@@ -105,6 +108,12 @@ class RAGService:
             if not relevant:
                 answer = NO_CONTEXT_ANSWER
             else:
+                dependencies = {chunk.document_id for chunk in relevant}
+                if analysis.uses_history:
+                    # Exclude already-deleted snapshots from the active scope.
+                    dependencies.update(db.scalars(select(Document.id).where(Document.id.in_(history_ids))))
+                if set_scope:
+                    set_scope(dependencies)
                 provider = get_llm_provider(self.settings)
                 instruction = QuestionAnalysisService.task_instruction(analysis)
                 context_for_generation = relevant
@@ -128,14 +137,23 @@ class RAGService:
                     answer = provider.generate(question, context_for_generation,
                         history if analysis.uses_history else [], instruction)
         progress("Conferindo fontes")
-        refusal = NO_CONTEXT_ANSWER in (answer or "")
+        if denied_documents(db, user, dependencies, required_ids=dependencies):
+            raise LLMUnavailableError("O acesso a uma fonte mudou durante a resposta. Revise os documentos e tente novamente.")
+        refusal = answer == NO_CONTEXT_ANSWER or (not documents and NO_CONTEXT_ANSWER in answer)
         sources = [] if refusal else self._supporting_sources(relevant, answer)
         cited = {int(value) for value in re.findall(r"\[(\d+)\]", answer)}
         available_citations = {chunk.citation for chunk in relevant}
-        if relevant and not refusal and (not cited or cited - available_citations):
+        invalid_placeholder = bool(re.search(r"\[N\]", answer, re.I))
+        if relevant and not refusal and (not cited or cited - available_citations or invalid_placeholder):
             metrics["citation_warning"] = "As referências desta resposta estão incompletas. Confira os documentos antes de usar a informação."
+            answer = re.sub(r"\[(\d+|N)\]", lambda match: match[0] if match[1].isdigit()
+                            and int(match[1]) in available_citations else "[referência indisponível]", answer, flags=re.I)
+        elif cited and not refusal and GenerationGuard.has_unsupported_literal(answer, relevant):
+            metrics["citation_warning"] = "Um código, data, percentual ou valor monetário não foi encontrado nos trechos citados. Confira as fontes."
         metrics.update(total_ms=round((perf_counter()-start)*1000), source_count=len(sources),
                        status="insufficient" if refusal else ("clarification" if analysis.clarification else "answered"))
+        owned_ids = db.scalars(select(Document.id).where(Document.id.in_(dependencies), Document.user_id == user.id)) if dependencies else []
+        stored_metrics = {**metrics, CONTEXT_IDS: sorted(dependencies), OWNED_CONTEXT_IDS: sorted(owned_ids)}
         # A retry replaces only the latest answer; previous messages stay intact.
         if retry_message_id:
             assistant = db.get(Message, retry_message_id)
@@ -144,11 +162,11 @@ class RAGService:
             db.execute(delete(MessageSource).where(MessageSource.message_id == assistant.id))
             assistant.content = answer
             assistant.feedback = assistant.feedback_reason = None
-            assistant.metrics = metrics
+            assistant.metrics = stored_metrics
         else:
             db.add(Message(chat_id=chat.id, role=MessageRole.USER, content=question))
             db.flush()
-            assistant = Message(chat_id=chat.id, role=MessageRole.ASSISTANT, content=answer, metrics=metrics)
+            assistant = Message(chat_id=chat.id, role=MessageRole.ASSISTANT, content=answer, metrics=stored_metrics)
             db.add(assistant)
             db.flush()
         for chunk in sources:
@@ -227,9 +245,9 @@ class RAGService:
                 scope = [key for key in previous if key is not None]
         return [document for document in documents if (document.id in scope if scope is not None else not document.archived)], scope is not None
 
-    def _recent_history(self, db, chat_id, before_id=None):
+    def _recent_history(self, db, chat_id, user, before_id=None):
         if not self.settings.conversation_history_messages:
-            return []
+            return [], set()
         query = select(Message).where(Message.chat_id == chat_id, Message.role.in_([MessageRole.USER, MessageRole.ASSISTANT]))
         if before_id:
             # Exclude the original question and answer of the latest turn.
@@ -237,16 +255,22 @@ class RAGService:
             original = db.scalar(query.where(Message.role == MessageRole.USER).order_by(Message.id.desc()).limit(1))
             if original:
                 query = query.where(Message.id < original.id)
-        messages = list(db.scalars(query.order_by(Message.created_at.desc(), Message.id.desc()).limit(self.settings.conversation_history_messages)))
+        messages = list(db.scalars(query.options(selectinload(Message.sources))
+            .order_by(Message.created_at.desc(), Message.id.desc()).limit(self.settings.conversation_history_messages)))
+        blocked = blocked_messages(db, user, messages)
+        dependencies = set()
         remaining, selected = self.settings.conversation_history_char_limit, []
         for message in messages:
+            if message.id in blocked:
+                continue
             content = message.content.strip()[:remaining]
             if content:
                 selected.append(ConversationMessage("user" if message.role == MessageRole.USER else "assistant", content))
+                dependencies.update(message_dependencies(message))
                 remaining -= len(content)
             if remaining <= 0:
                 break
-        return list(reversed(selected))
+        return list(reversed(selected)), dependencies
 
     @staticmethod
     def _build_retrieval_query(question, history):
