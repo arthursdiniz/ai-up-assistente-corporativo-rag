@@ -1,0 +1,1286 @@
+{
+  "generated_at": "2026-11-11T19:44:13.292276+00:00",
+  "as_of": "2026-11-11",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "extractor": "pt-rules-1",
+  "detector": "compare-pt-1",
+  "mode": "deterministic",
+  "splits": {
+    "development": {
+      "cases": 16,
+      "repetitions": 5,
+      "counts": {
+        "tp": 9,
+        "fp": 0,
+        "fn": 0,
+        "negative_cases": 7,
+        "negative_with_alert": 0
+      },
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0,
+      "exact_cases": 16,
+      "stable_cases": 16,
+      "valid_evidence": 16,
+      "total_evidence": 16,
+      "latency_ms": {
+        "mean": 0.207,
+        "median": 0.175,
+        "p95": 0.283
+      },
+      "results": [
+        {
+          "id": "dev-travel-conflict",
+          "group": "dev-travel-conflict",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 106,
+                "excerpt": "Assunto: reembolso de viagens\nVigência: 01/01/2026 a 31/12/2027\nLimite de reembolso de viagens: R$ 150,00."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 106,
+                "excerpt": "Assunto: reembolso de viagens\nVigência: 01/01/2026 a 31/12/2027\nLimite de reembolso de viagens: R$ 200,00."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-equal",
+          "group": "dev-equal",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "dev-overlap",
+          "group": "dev-overlap",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 121,
+                "excerpt": "Assunto: inspeção de empilhadeiras\nVigência: 01/01/2026 a 31/12/2027\nPrazo de inspeção de empilhadeiras: 3 dias corridos."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 121,
+                "excerpt": "Assunto: inspeção de empilhadeiras\nVigência: 01/09/2026 a 01/09/2027\nPrazo de inspeção de empilhadeiras: 5 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-replacement",
+          "group": "dev-replacement",
+          "expected": "RELEVANT_CHANGE",
+          "predicted": [
+            "RELEVANT_CHANGE"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 101,
+                "excerpt": "Assunto: envio de crachá\nVigência: 01/01/2026 a 31/12/2027\nPrazo de envio de crachá: 4 dias corridos."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 2,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 101,
+                "excerpt": "Assunto: envio de crachá\nVigência: 01/01/2026 a 31/12/2027\nPrazo de envio de crachá: 9 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-period-separated",
+          "group": "dev-period-separated",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "dev-condition",
+          "group": "dev-condition",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [
+            "NEEDS_CLARIFICATION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 136,
+                "excerpt": "Assunto: manutenção preventiva\nVigência: 01/01/2026 a 31/12/2027\nCondição: pagamento à vista\nLimite de manutenção preventiva: R$ 800,00."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 108,
+                "excerpt": "Assunto: manutenção preventiva\nVigência: 01/01/2026 a 31/12/2027\nLimite de manutenção preventiva: R$ 900,00."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-missing",
+          "group": "dev-missing",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "dev-local-scope",
+          "group": "dev-local-scope",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "dev-exception",
+          "group": "dev-exception",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "dev-expiry",
+          "group": "dev-expiry",
+          "expected": "POSSIBLE_OUTDATED",
+          "predicted": [
+            "POSSIBLE_OUTDATED"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 111,
+                "excerpt": "Assunto: assinatura de pedido\nVigência: 01/01/2023 a 31/12/2024\nPrazo de assinatura de pedido: 4 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-percentage",
+          "group": "dev-percentage",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 87,
+                "excerpt": "Assunto: reajuste de locação\nVigência: 01/01/2026 a 31/12/2027\nReajuste de locação: 8%."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 87,
+                "excerpt": "Assunto: reajuste de locação\nVigência: 01/01/2026 a 31/12/2027\nReajuste de locação: 6%."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-modal",
+          "group": "dev-modal",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 101,
+                "excerpt": "Assunto: registro de protocolo\nVigência: 01/01/2026 a 31/12/2027\nÉ obrigatório registrar o protocolo."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 98,
+                "excerpt": "Assunto: registro de protocolo\nVigência: 01/01/2026 a 31/12/2027\nÉ proibido registrar o protocolo."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-distinct-target",
+          "group": "dev-distinct-target",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "dev-units",
+          "group": "dev-units",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [
+            "NEEDS_CLARIFICATION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 100,
+                "excerpt": "Assunto: entrega de guias\nVigência: 01/01/2026 a 31/12/2027\nPrazo de entrega de guias: 7 dias úteis."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 103,
+                "excerpt": "Assunto: entrega de guias\nVigência: 01/01/2026 a 31/12/2027\nPrazo de entrega de guias: 7 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-removed",
+          "group": "dev-removed",
+          "expected": "RELEVANT_CHANGE",
+          "predicted": [
+            "RELEVANT_CHANGE"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 125,
+                "excerpt": "Assunto: controle de acesso\nVigência: 01/01/2026 a 31/12/2027\nÉ obrigatório registrar senha.\nÉ obrigatório arquivar o recibo."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "dev-unchanged",
+          "group": "dev-unchanged",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        }
+      ]
+    },
+    "heldout": {
+      "cases": 26,
+      "repetitions": 5,
+      "counts": {
+        "tp": 15,
+        "fp": 0,
+        "fn": 0,
+        "negative_cases": 11,
+        "negative_with_alert": 0
+      },
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0,
+      "exact_cases": 26,
+      "stable_cases": 26,
+      "valid_evidence": 30,
+      "total_evidence": 30,
+      "latency_ms": {
+        "mean": 0.152,
+        "median": 0.152,
+        "p95": 0.238
+      },
+      "results": [
+        {
+          "id": "test-lab-overlap",
+          "group": "vigência",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 130,
+                "excerpt": "Assunto: compra de reagentes\nDepartamento: Laboratório\nVigência: 01/01/2026 a 31/12/2027\nLimite de compra de reagentes: R$ 420,00."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 130,
+                "excerpt": "Assunto: compra de reagentes\nDepartamento: Laboratório\nVigência: 01/10/2026 a 30/06/2027\nLimite de compra de reagentes: R$ 490,00."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-water-deadline",
+          "group": "prazo",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 121,
+                "excerpt": "Assunto: entrega de laudos de água\nVigência: 01/01/2026 a 31/12/2027\nPrazo de entrega de laudos de água: 9 dias corridos."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 121,
+                "excerpt": "Assunto: entrega de laudos de água\nVigência: 01/01/2026 a 31/12/2027\nPrazo de entrega de laudos de água: 7 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-credit-identical",
+          "group": "compatível",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-outsourced",
+          "group": "público",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-renewal",
+          "group": "versão",
+          "expected": "RELEVANT_CHANGE",
+          "predicted": [
+            "RELEVANT_CHANGE"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 114,
+                "excerpt": "Assunto: inspeção de hidrantes\nVigência: 01/01/2026 a 31/12/2027\nPrazo de inspeção de hidrantes: 14 dias corridos."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 2,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 113,
+                "excerpt": "Assunto: inspeção de hidrantes\nVigência: 01/01/2026 a 31/12/2027\nPrazo de inspeção de hidrantes: 7 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-new-obligation",
+          "group": "versão",
+          "expected": "RELEVANT_CHANGE",
+          "predicted": [
+            "RELEVANT_CHANGE"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 2,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 150,
+                "excerpt": "Assunto: inspeção de elevadores\nVigência: 01/01/2026 a 31/12/2027\nPrazo de inspeção de elevadores: 8 dias corridos.\nÉ obrigatório fotografar a cabine."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-department",
+          "group": "departamento",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-expired-label",
+          "group": "desatualização",
+          "expected": "POSSIBLE_OUTDATED",
+          "predicted": [
+            "POSSIBLE_OUTDATED"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 109,
+                "excerpt": "Assunto: revisão de contrato\nVigência: 01/01/2024 a 01/01/2025\nPrazo de revisão de contrato: 4 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-qualified-absence",
+          "group": "ausência",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-branch-exception",
+          "group": "exceção",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-approval",
+          "group": "condição",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [
+            "NEEDS_CLARIFICATION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 142,
+                "excerpt": "Assunto: renovação de licenças\nVigência: 01/01/2026 a 31/12/2027\nCondição: aprovado pela diretoria\nLimite de renovação de licenças: R$ 700,00."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 140,
+                "excerpt": "Assunto: renovação de licenças\nVigência: 01/01/2026 a 31/12/2027\nCondição: aprovado pelo gerente\nLimite de renovação de licenças: R$ 810,00."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-units",
+          "group": "unidade",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [
+            "NEEDS_CLARIFICATION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 110,
+                "excerpt": "Assunto: resposta de chamados\nVigência: 01/01/2026 a 31/12/2027\nPrazo de resposta de chamados: 24 horas úteis."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 111,
+                "excerpt": "Assunto: resposta de chamados\nVigência: 01/01/2026 a 31/12/2027\nPrazo de resposta de chamados: 1 dias corridos."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-window-separated",
+          "group": "vigência",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-prohibited",
+          "group": "instrução",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 97,
+                "excerpt": "Assunto: transporte de amostras\nVigência: 01/01/2026 a 31/12/2027\nÉ obrigatório lacrar a amostra."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 94,
+                "excerpt": "Assunto: transporte de amostras\nVigência: 01/01/2026 a 31/12/2027\nÉ proibido lacrar a amostra."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-two-percent",
+          "group": "percentual",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 85,
+                "excerpt": "Assunto: desconto de frete\nVigência: 01/01/2026 a 31/12/2027\nDesconto de frete: 3,5%."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 85,
+                "excerpt": "Assunto: desconto de frete\nVigência: 01/01/2026 a 31/12/2027\nDesconto de frete: 4,5%."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-range",
+          "group": "intervalo",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-range-incompatible",
+          "group": "intervalo",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 122,
+                "excerpt": "Assunto: acesso a centros técnicos\nVigência: 01/01/2026 a 31/12/2027\nValor mínimo de acesso a centros técnicos: R$ 200,00."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 122,
+                "excerpt": "Assunto: acesso a centros técnicos\nVigência: 01/01/2026 a 31/12/2027\nValor máximo de acesso a centros técnicos: R$ 100,00."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-invalid-date",
+          "group": "vigência",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [
+            "NEEDS_CLARIFICATION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 105,
+                "excerpt": "Assunto: aquisição de insumos\nVigência: 31/02/2026 a 31/12/2027\nLimite de aquisição de insumos: R$ 90,00."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 106,
+                "excerpt": "Assunto: aquisição de insumos\nVigência: 01/01/2026 a 31/12/2027\nLimite de aquisição de insumos: R$ 120,00."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-unrelated",
+          "group": "diferença aparente",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-implicit-equip",
+          "group": "diferença aparente",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-subtopic",
+          "group": "diferença aparente",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "test-missing-dept",
+          "group": "informação parcial",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [
+            "NEEDS_CLARIFICATION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 140,
+                "excerpt": "Assunto: higienização de containers\nDepartamento: Higiene\nVigência: 01/01/2026 a 31/12/2027\nLimite de higienização de containers: R$ 150,00."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 118,
+                "excerpt": "Assunto: higienização de containers\nVigência: 01/01/2026 a 31/12/2027\nLimite de higienização de containers: R$ 185,00."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-change-qualification",
+          "group": "versão",
+          "expected": "RELEVANT_CHANGE",
+          "predicted": [
+            "RELEVANT_CHANGE"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 114,
+                "excerpt": "Assunto: lacre de sensores\nVigência: 01/01/2026 a 31/12/2027\nResponsável: Inspeção\nÉ obrigatório arquivar o lacre."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 2,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 115,
+                "excerpt": "Assunto: lacre de sensores\nVigência: 01/01/2026 a 31/12/2027\nResponsável: Qualidade\nÉ obrigatório arquivar o lacre."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 114,
+                "excerpt": "Assunto: lacre de sensores\nVigência: 01/01/2026 a 31/12/2027\nResponsável: Inspeção\nÉ obrigatório arquivar o lacre."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 2,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 115,
+                "excerpt": "Assunto: lacre de sensores\nVigência: 01/01/2026 a 31/12/2027\nResponsável: Qualidade\nÉ obrigatório arquivar o lacre."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-multisentence",
+          "group": "texto corrido",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 16,
+                "end": 69,
+                "excerpt": "O prazo para descarte de bobinas é de 5 dias corridos"
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 28,
+                "end": 81,
+                "excerpt": "O prazo para descarte de bobinas é de 9 dias corridos"
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-header-contradiction",
+          "group": "vigência",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [
+            "NEEDS_CLARIFICATION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 127,
+                "excerpt": "Assunto: registro de sinistro\nVigência: 2026-02-01 a 2027-04-01\nPolítica: SI-213\nA vigência desta política consta no cabeçalho."
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 127,
+                "excerpt": "Assunto: registro de sinistro\nVigência: 2026-04-01 a 2027-06-01\nPolítica: SI-213\nA vigência desta política consta no cabeçalho."
+              },
+              "valid": true
+            }
+          ]
+        },
+        {
+          "id": "test-security-command",
+          "group": "injeção",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        }
+      ]
+    },
+    "challenge": {
+      "cases": 8,
+      "repetitions": 5,
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 4,
+        "negative_cases": 3,
+        "negative_with_alert": 0
+      },
+      "precision": 1.0,
+      "recall": 0.2,
+      "f1": 0.3333333333333333,
+      "false_positive_rate": 0.0,
+      "exact_cases": 4,
+      "stable_cases": 8,
+      "valid_evidence": 2,
+      "total_evidence": 2,
+      "latency_ms": {
+        "mean": 0.071,
+        "median": 0.068,
+        "p95": 0.117
+      },
+      "results": [
+        {
+          "id": "stress-written-days",
+          "group": "número por extenso",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [],
+          "exact": false,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "stress-business-day",
+          "group": "conversão de unidade",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "stress-linked-appendix",
+          "group": "referência cruzada",
+          "expected": "NEEDS_CLARIFICATION",
+          "predicted": [],
+          "exact": false,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "stress-implicit-conflict",
+          "group": "obrigação implícita",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [],
+          "exact": false,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "stress-expiry-formats",
+          "group": "data por extenso",
+          "expected": "POSSIBLE_OUTDATED",
+          "predicted": [],
+          "exact": false,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "stress-separated-topics",
+          "group": "assunto diferente",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "stress-explicit-different-audience",
+          "group": "público diferente",
+          "expected": null,
+          "predicted": [],
+          "exact": true,
+          "stable": true,
+          "evidence": []
+        },
+        {
+          "id": "stress-plain-conflict",
+          "group": "sinônimos explícitos",
+          "expected": "POSSIBLE_CONTRADICTION",
+          "predicted": [
+            "POSSIBLE_CONTRADICTION"
+          ],
+          "exact": true,
+          "stable": true,
+          "evidence": [
+            {
+              "ref": {
+                "document_id": 1,
+                "version": 1,
+                "section_index": 0,
+                "page": 3,
+                "sheet": null,
+                "location": "Página 3",
+                "start": 0,
+                "end": 49,
+                "excerpt": "O teto de diárias em operação externa é R$ 180,00"
+              },
+              "valid": true
+            },
+            {
+              "ref": {
+                "document_id": 2,
+                "version": 1,
+                "section_index": 0,
+                "page": 4,
+                "sheet": null,
+                "location": "Página 4",
+                "start": 0,
+                "end": 51,
+                "excerpt": "O limite de diárias em operação externa é R$ 290,00"
+              },
+              "valid": true
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,7 +1,8 @@
 (() => {
 const {apiFetch,apiRequest,loadCurrentUser,showToast,downloadFile}=window.aiup;
 const params=new URLSearchParams(location.search), id=Number(params.get("id"));
-let page=Number(params.get("page"))||null, offset=0, file, objectUrl, totalPages=1;
+const sectionIndex=Number(params.get("section"));
+let page=Number(params.get("page"))||null, offset=!params.has("page") && Number.isSafeInteger(sectionIndex) && sectionIndex>=0 ? sectionIndex : 0, file, objectUrl, totalPages=1;
 const $=s=>document.querySelector(s);
 async function load() {
   const result=await apiFetch("/api/documents/"+id+"/preview?offset="+offset+(page?"&page="+page:""));

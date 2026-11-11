@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.admin import router as admin_router
+from app.api.auditor import router as auditor_router
 from app.api.auth import router as auth_router
 from app.api.chats import router as chats_router
 from app.api.documents import router as documents_router
@@ -32,8 +33,12 @@ async def lifespan(_: FastAPI):
     from app.db.session import SessionLocal
     from app.models.document import Document, DocumentStatus
     from app.models.generation import Generation
+    from app.models.auditor import AuditorRun
+    from app.services.auditor_service import ACTIVE_STATES, shutdown as shutdown_auditor
     from app.services.generation_service import shutdown
     with SessionLocal() as db:
+        for run in db.scalars(select(AuditorRun).where(AuditorRun.status.in_(ACTIVE_STATES))):
+            run.status, run.stage, run.error = "error", "Execução interrompida", "O aplicativo foi reiniciado. Inicie a auditoria novamente."
         for job in db.scalars(select(Generation).where(Generation.status.in_(["queued", "running"]))):
             job.status, job.stage, job.error = "error", "Execução interrompida", "O aplicativo foi reiniciado. Envie a pergunta novamente."
         for document in db.scalars(select(Document).where(Document.status.in_([DocumentStatus.UPLOADED, DocumentStatus.PROCESSING]))):
@@ -41,8 +46,11 @@ async def lifespan(_: FastAPI):
             document.processing_stage = "Processamento interrompido"
             document.error_message = "O aplicativo foi reiniciado. Use Reprocessar para continuar."
         db.commit()
-    yield
-    shutdown()
+    try:
+        yield
+    finally:
+        shutdown()
+        shutdown_auditor()
 
 
 app = FastAPI(
@@ -103,4 +111,5 @@ app.include_router(documents_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(organizations_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(auditor_router, prefix="/api")
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")

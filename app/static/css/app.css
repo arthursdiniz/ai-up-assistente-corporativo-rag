@@ -479,6 +479,21 @@ input::placeholder,textarea::placeholder { color:#817d8c; opacity:1; }
 .dialog-actions { flex-wrap:wrap; }
 .app-dialog form,.app-dialog > div { align-content:start; }
 .stack-form { gap:.9rem; }
+.auditor-actions { align-items:end; margin:1rem 0; }
+.auditor-actions label { min-width:min(11rem,100%); }
+.auditor-actions .audit-history { display:flex; flex-basis:100%; align-items:center; color:var(--muted); }
+.audit-history input { width:auto; }
+.auditor-runs,.auditor-alerts { display:grid; gap:.65rem; margin:.8rem 0; }
+.auditor-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.7rem; border:1px solid var(--line); border-radius:.7rem; padding:.85rem; }
+.auditor-row h3,.auditor-row p { margin:.35rem 0; overflow-wrap:anywhere; }
+.auditor-row small,.auditor-source small { color:var(--muted); }
+.auditor-row progress { accent-color:var(--accent); }
+.audit-detail { width:min(760px,calc(100% - 2rem)); max-height:calc(100dvh - 2rem); }
+.audit-dialog-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.audit-dialog-header h2 { margin:0; overflow-wrap:anywhere; }
+.app-dialog .auditor-source pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+.auditor-source .button { display:flex; width:fit-content; margin-top:.7rem; }
+.app-dialog #audit-review { max-width:none; padding:0; }
 
 @media(max-width:640px) {
   .sidebar.mobile-open { gap:1rem; padding:4rem 1rem 1rem; }

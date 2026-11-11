@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Central de inconsistências — AI-Up</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/app.css?v=16">
+</head>
+<body class="app-page">
+  <div class="app-shell">
+    <aside class="sidebar compact-sidebar">
+      <a class="wordmark" href="/">AI<span>↑</span>UP</a>
+      <nav class="nav-links" aria-label="Navegação principal">
+        <a href="/">Conversas</a>
+        <a href="/documents.html">Documentos</a>
+        <a class="active" aria-current="page" href="/auditor.html">Auditor</a>
+        <a id="admin-link" class="hidden" href="/admin.html">Administração</a>
+      </nav>
+      <div class="user-card">
+        <div class="avatar" id="user-initial">A</div>
+        <div><strong id="user-name"></strong><small id="user-role"></small></div>
+        <button id="logout" class="icon-button" aria-label="Sair">↗</button>
+      </div>
+    </aside>
+    <main class="workspace content-page auditor-page">
+      <header class="page-header">
+        <div>
+          <p class="section-label">GOVERNANÇA DOCUMENTAL</p>
+          <h1>Central de inconsistências</h1>
+          <p>Compare regras, confira os trechos originais e registre sua decisão.</p>
+        </div>
+        <button type="button" id="export-audit" class="button secondary">Exportar JSON</button>
+      </header>
+      <section class="panel padded" aria-labelledby="start-audit-title">
+        <h2 id="start-audit-title">Iniciar auditoria</h2>
+        <form id="run-audit" class="filter-bar auditor-actions">
+          <label>Documento pronto<select id="audit-document" required><option value="">Selecione</option></select></label>
+          <label>Comparação<select id="audit-previous" disabled><option value="">Relacionados e versão anterior</option></select></label>
+          <button class="button primary">Analisar</button>
+        </form>
+        <div id="audit-runs" class="auditor-runs" aria-label="Auditorias recentes" aria-live="polite"></div>
+      </section>
+      <section class="panel padded" aria-labelledby="alerts-title">
+        <h2 id="alerts-title">Alertas</h2>
+        <form id="audit-filters" class="filter-bar auditor-actions">
+          <label>Pesquisar<input type="search" id="audit-search" maxlength="200" placeholder="Assunto ou documento"></label>
+          <label>Classificação<select id="audit-kind"><option value="">Todas</option></select></label>
+          <label>Revisão<select id="audit-state"><option value="">Todos os estados</option></select></label>
+          <button class="button secondary">Aplicar filtros</button>
+          <label class="audit-history"><input type="checkbox" id="audit-historical"> Incluir alertas históricos</label>
+        </form>
+        <p id="audit-count" role="status"></p>
+        <div id="audit-alerts" class="auditor-alerts"></div>
+        <div class="card-actions">
+          <button type="button" id="audit-back" class="button secondary" disabled>Anterior</button>
+          <button type="button" id="audit-next" class="button secondary" disabled>Próxima</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <dialog id="audit-detail" class="app-dialog audit-detail" aria-labelledby="audit-detail-title">
+    <div>
+      <div class="audit-dialog-header">
+        <h2 id="audit-detail-title">Detalhes do alerta</h2>
+        <button type="button" id="close-audit" class="icon-button" aria-label="Fechar detalhes">×</button>
+      </div>
+      <div id="audit-evidence"></div>
+      <form id="audit-review" class="stack-form">
+        <label>Decisão de revisão<select id="review-state" required></select></label>
+        <label>Justificativa<textarea id="review-reason" rows="3" required minlength="3" maxlength="1000"></textarea></label>
+        <button class="button primary">Registrar decisão</button>
+      </form>
+      <section aria-labelledby="audit-review-history"><h3 id="audit-review-history">Histórico de decisões</h3><ol id="audit-decisions"></ol></section>
+    </div>
+  </dialog>
+  <div id="toast" class="toast"></div>
+  <script src="/js/api.js?v=14"></script>
+  <script src="/js/auditor.js?v=1"></script>
+</body>
+</html>

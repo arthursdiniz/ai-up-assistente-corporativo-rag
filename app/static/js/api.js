@@ -117,6 +117,13 @@ async function downloadFile(path, name) {
 function setupShell() {
   const sidebar = document.querySelector(".sidebar");
   if (!sidebar) return;
+  const library = sidebar.querySelector('.nav-links a[href="/documents.html"]');
+  if (library && !sidebar.querySelector('a[href="/auditor.html"]')) {
+    const auditor = document.createElement("a");
+    auditor.href = "/auditor.html";
+    auditor.textContent = "Auditor";
+    library.after(auditor);
+  }
   sidebar.id = "app-sidebar";
   const toggle = document.createElement("button");
   toggle.className = "mobile-menu icon-button";

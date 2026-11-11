@@ -184,6 +184,20 @@ Os testes usam SQLite apenas como banco efêmero, embeddings determinísticos e 
 
 Para reproduzir os experimentos da defesa, veja o [relatório de validação do TCC](docs/RELATORIO_VALIDACAO_TCC.md). Ele reúne metodologia, resultados de recuperação e Ollama, carga HTTP isolada e links para o protocolo humano e a revisão de segurança.
 
+## AI-Up Auditor
+
+A **Central de inconsistências**, acessível pela navegação da aplicação, compara regras de documentos autorizados, indica alterações de versão e permite revisar cada alerta com evidência literal. A análise manual funciona com o modo determinístico. A análise após indexação e os modos locais de embeddings e Ollama são opcionais.
+
+Para demonstrar com dados descartáveis no Windows:
+
+```powershell
+.venv\Scripts\python.exe -B scripts/demo_auditor.py --sample --automatic
+```
+
+Abra `http://127.0.0.1:8013/auditor.html` e use a conta sintética exibida no terminal. Acrescente `--ollama` se o modelo local estiver disponível. A instalação normal usa a migration aditiva `20261111_0007`, aplicada pelo inicializador do projeto após a atualização.
+
+Consulte [arquitetura, API e permissões do Auditor](docs/AI_UP_AUDITOR.md), [avaliação e métricas](docs/AVALIACAO_AUDITOR.md), [roteiro da banca](docs/ROTEIRO_APRESENTACAO.md) e [material para atualizar o TCC](docs/MATERIAL_ATUALIZACAO_TCC.md).
+
 Para comparar a busca vetorial anterior com o pipeline híbrido atual:
 
 ```powershell

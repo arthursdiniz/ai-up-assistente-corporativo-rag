@@ -20,3 +20,7 @@ Definir finalidade e responsáveis para arquivos originais, índices, conversas,
 Antes de qualquer alteração destrutiva, inventariar os registros afetados e simular a política com contagens em uma restauração isolada. Revisar o tratamento dos snapshots sem proveniência e o impacto na capacidade de auditar decisões antigas. Se for aprovada a remoção de dados derivados, planejar expurgo coordenado de arquivos, vetores, trechos, respostas e resultados de jobs, com testes de restauração e revisão do prazo das cópias cifradas. Nenhuma migração de expurgo integra esta entrega.
 
 Riscos residuais incluem cópias já baixadas, dados já vistos, conteúdo digitado manualmente pelo usuário, autorização que pode mudar durante uma requisição já em curso, configurações locais administradas por terceiros, ataques semânticos fora da amostra e falta de autenticação do manifesto de backup. A avaliação de conformidade depende de análise organizacional e jurídica própria.
+
+## Auditor documental
+
+O Auditor valida a organização e a ACL de cada fonte. Alertas e decisões são vinculados ao usuário que iniciou a execução. Revogação oculta execução, listagem, detalhes, evidências, revisões e exportação que dependem de documentos agora restritos. Excluir uma fonte elimina em cascata suas regras, alertas e decisões relacionadas. O arquivamento mantém histórico sob permissão atual. A exportação JSON é uma cópia independente, sujeita à governança do destinatário. Consulte o [modelo relacional e a política aplicada](AI_UP_AUDITOR.md).

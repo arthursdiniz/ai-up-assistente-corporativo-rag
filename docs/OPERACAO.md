@@ -74,3 +74,9 @@ O token não é armazenado em texto puro e fica depois de `#` no link, por isso 
 Ao desativar uma conta pelo painel, escolha outro usuário ativo da mesma organização. A propriedade de todos os documentos é transferida na mesma transação e as sessões da conta desligada são revogadas. Conversas antigas permanecem vinculadas à conta inativa. Excluir uma equipe não exclui arquivos: documentos antes compartilhados com ela tornam-se privados para seus proprietários.
 
 Não há múltiplos servidores ou fila distribuída. A busca lexical examina no máximo `RAG_LEXICAL_SCAN_LIMIT` trechos; bases maiores exigem outro índice lexical e testes de escala. Não exponha este servidor diretamente à internet.
+
+## Auditor documental
+
+Em uma atualização normal, siga o procedimento de backup e reinicie pelo `start_ai_up.ps1` para aplicar a migration `20261111_0007`. A migration acrescenta tabelas sem regravar documentos ou conversas. Para testar migrations antes, `scripts/test_postgres_local.py` cria um PostgreSQL `ai_up_test_*` separado. Mantenha um processo Uvicorn.
+
+Abra **Auditor**, selecione um documento pronto e clique **Analisar**. Para habilitar o início após indexação, configure `AUDITOR_AUTOMATIC=true` e reinicie. Confira o estado e a configuração da execução na Central ou na API. Uma auditoria interrompida pode ser reenviada. O original e as evidências têm ACL revalidada. Cópias JSON baixadas devem ficar em local protegido. Veja as [opções do Auditor](AI_UP_AUDITOR.md) e a [demonstração isolada](ROTEIRO_APRESENTACAO.md).

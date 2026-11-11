@@ -22,11 +22,15 @@ O limite de chunks considera o tokenizer real (modelo atual: 128 tokens máximos
 
 ## Persistência e recuperação
 
-PostgreSQL: organizações, equipes, convites, usuários, documentos/seções/versões, conversas, mensagens, snapshots de fontes, jobs e auditoria. Chroma: vetores e metadados. Arquivos originais ficam em armazenamento local.
+PostgreSQL: organizações, equipes, convites, usuários, documentos/seções/versões, conversas, mensagens, snapshots de fontes, jobs, auditoria e as quatro tabelas do Auditor documental. Chroma: vetores e metadados. Arquivos originais ficam em armazenamento local.
 
-Reprocessamento prepara uma nova geração de vetores antes da substituição. A limpeza ocorre depois do commit; falhas preservam a geração anterior. Excluir um documento não apaga trechos já citados: a FK vira nula e o snapshot do nome/excerto permanece.
+Reprocessamento prepara uma nova geração de vetores antes da substituição. A limpeza ocorre depois do commit e falhas preservam a geração anterior. No chat, a FK de fontes excluídas vira nula e há regras de retenção para snapshots próprios e legados. Respostas derivadas de fontes compartilhadas dependem da ACL e da proveniência conhecida. A exclusão de uma fonte remove regras, alertas e revisões dependentes do Auditor. [Segurança e retenção](SEGURANCA_E_RETENCAO.md)
 
-Jobs têm estado persistido e transmissão parcial em memória. Reconexão repete o texto acumulado; a interface reconstrói a resposta desde o início. Um reinício interrompe o job e permite recuperar a pergunta. O cancelamento é cooperativo: o modelo pode permanecer ocupado durante uma chamada bloqueante até devolver controle.
+Jobs de chat têm estado persistido e transmissão parcial em memória. Durante a geração, a reconexão repete o texto acumulado sob a ACL atual. Uma conexão que chega após conclusão recebe o estado final. Um reinício interrompe o job e permite recuperar a pergunta. O cancelamento é cooperativo e uma chamada bloqueante pode permanecer ocupada até devolver controle.
+
+## Auditor documental
+
+Os fluxos de chat e auditoria compartilham a biblioteca, extração, OCR, versões e autorização. A auditoria não usa a resposta do chat como evidência. Seu worker separado extrai regras validadas e reusa conjuntos por geração do índice. Compara o escopo atual e versões acessíveis, revalida o acesso antes de salvar e registra decisões humanas. Veja o [pipeline, diagrama relacional e contratos](AI_UP_AUDITOR.md).
 
 ## Segurança
 
@@ -45,4 +49,4 @@ Jobs têm estado persistido e transmissão parcial em memória. Reconexão repet
 
 ## Escala e fronteiras
 
-Aplicação local, um processo Uvicorn, até dois workers de geração por padrão e um escritor de índice. Não suporta coordenação de jobs entre réplicas. BM25 percorre/cacheia até RAG_LEXICAL_SCAN_LIMIT trechos, padrão 5000. Avaliar filas externas, índice lexical próprio, quotas e governança antes de exposição organizacional.
+Aplicação local, um processo Uvicorn, até dois workers de geração por padrão, um worker do Auditor e um escritor de índice. A fila é coordenada no processo. BM25 percorre/cacheia até RAG_LEXICAL_SCAN_LIMIT trechos, padrão 5000. Filas externas, índice lexical próprio, quotas e governança precisam de avaliação antes de exposição organizacional.

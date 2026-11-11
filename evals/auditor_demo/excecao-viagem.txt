@@ -1,0 +1,5 @@
+Assunto: reembolso de viagens
+Departamento: Operações
+Vigência: 01/01/2026 a 31/12/2029
+Exceção: deslocamentos internacionais de emergência
+O limite de reembolso é R$ 350,00.

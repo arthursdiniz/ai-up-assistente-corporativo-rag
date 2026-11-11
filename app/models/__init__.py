@@ -9,6 +9,7 @@ from app.models.generation import Generation
 from app.models.organization import Organization
 from app.models.team import Team, team_members
 from app.models.invitation import Invitation, invitation_teams
+from app.models.auditor import AuditorRun, AuditorRuleSet, AuditorAlert, AuditorReview
 
 __all__ = [
     "AuditLog",
@@ -28,4 +29,5 @@ __all__ = [
     "team_members",
     "Invitation",
     "invitation_teams",
+    "AuditorRun", "AuditorRuleSet", "AuditorAlert", "AuditorReview",
 ]

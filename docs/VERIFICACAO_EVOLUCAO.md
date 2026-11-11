@@ -1,4 +1,11 @@
-# Verificação da evolução — 9 de setembro de 2026
+# Verificação da evolução do AI-Up
+
+## Auditor documental — 11 de novembro de 2026
+
+- Migration `20261111_0007` validada desde banco vazio, com 18 tabelas compatíveis com os modelos SQLAlchemy.
+- 113 testes passaram em SQLite e 113 no PostgreSQL isolado. Cinco testes de navegação passaram.
+- O navegador mostrou alerta, evidências, confirmação e histórico. Uma instância sintética verificou reavaliação automática na versão 2, isolamento e consulta com Ollama real.
+- Resultados do detector, falsos negativos e protocolo humano em [Avaliação do Auditor](AVALIACAO_AUDITOR.md).
 
 ## Onboarding empresarial — 10 de setembro de 2026
 

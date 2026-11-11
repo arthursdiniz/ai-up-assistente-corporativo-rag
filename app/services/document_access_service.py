@@ -12,18 +12,18 @@ class InvalidDocumentScope(ValueError):
 
 class DocumentAccessService:
     @staticmethod
-    def accessible_clause(user: User):
+    def accessible_clause(user: User, document=Document):
         team_ids = select(team_members.c.team_id).where(team_members.c.user_id == user.id)
         return or_(
-            Document.user_id == user.id,
+            document.user_id == user.id,
             and_(
-                Document.organization_id == user.organization_id,
-                Document.visibility == DocumentVisibility.ORGANIZATION,
+                document.organization_id == user.organization_id,
+                document.visibility == DocumentVisibility.ORGANIZATION,
             ),
             and_(
-                Document.organization_id == user.organization_id,
-                Document.visibility == DocumentVisibility.TEAM,
-                Document.team_id.in_(team_ids),
+                document.organization_id == user.organization_id,
+                document.visibility == DocumentVisibility.TEAM,
+                document.team_id.in_(team_ids),
             ),
         )
 

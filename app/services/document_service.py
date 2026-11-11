@@ -178,9 +178,13 @@ class DocumentService:
     def process(self, db: Session, document: Document) -> None:
         # One local index writer avoids CPU saturation and overlapping replacements.
         with _processing_lock:
-            self._process(db, document)
+            indexed = self._process(db, document)
+        if indexed and self.settings.auditor_automatic and not document.archived:
+            from app.services.auditor_service import queue_after_index
 
-    def _process(self, db: Session, document: Document) -> None:
+            queue_after_index(document.id, document.user_id)
+
+    def _process(self, db: Session, document: Document) -> bool:
         previous_generation = document.index_generation
         generation = uuid.uuid4().hex
         document.status = DocumentStatus.PROCESSING
@@ -235,6 +239,7 @@ class DocumentService:
                 VectorStoreService(self.settings.resolved_chroma_dir).discard_generation(document.id, generation, keep=True)
             except Exception:
                 logger.warning("Limpeza de índice antigo pendente para documento %s", document.id)
+            return True
         except Exception as exc:
             db.rollback()
             try:
@@ -260,6 +265,7 @@ class DocumentService:
                     details={"error_type": type(exc).__name__},
                 )
                 db.commit()
+            return False
 
     @staticmethod
     def index_version(settings):

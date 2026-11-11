@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     login_attempt_limit: int = Field(default=8, ge=2)
     login_attempt_window_seconds: int = Field(default=300, ge=10)
     generation_workers: int = Field(default=2, ge=1, le=4)
+    auditor_automatic: bool = False
+    auditor_semantic: bool = False
+    auditor_ollama: bool = False
 
     chunk_size: int = 1200
     chunk_overlap: int = 200
