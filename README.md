@@ -193,10 +193,10 @@ A **Central de inconsistências**, acessível pela navegação da aplicação, c
 Para demonstrar com dados descartáveis no Windows:
 
 ```powershell
-.venv\Scripts\python.exe -B scripts/demo_auditor.py --sample --automatic
+.venv\Scripts\python.exe -B scripts/demo_auditor.py --sample --automatic --ollama
 ```
 
-Abra `http://127.0.0.1:8013/auditor.html` e use a conta sintética exibida no terminal. Acrescente `--ollama` se o modelo local estiver disponível. A instalação normal usa a migration aditiva `20261111_0007`, aplicada pelo inicializador do projeto após a atualização.
+Abra `http://127.0.0.1:8013/auditor.html` e use a conta sintética exibida no terminal. Com `--ollama`, mantenha o Ollama aberto com o modelo `qwen3:4b-instruct` disponível. Para testar apenas a análise documental em um computador sem modelo de geração, retire `--ollama`. Nesse modo, o chat exibe `[MOCK]`. A instalação normal usa a migration aditiva `20261111_0007`, aplicada pelo inicializador do projeto após a atualização.
 
 Consulte [arquitetura, API e permissões do Auditor](docs/AI_UP_AUDITOR.md), [avaliação e métricas](docs/AVALIACAO_AUDITOR.md), [roteiro da banca](docs/ROTEIRO_APRESENTACAO.md) e [material para atualizar o TCC](docs/MATERIAL_ATUALIZACAO_TCC.md).
 
