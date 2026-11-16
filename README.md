@@ -40,7 +40,11 @@ O Ollama e o Tesseract só são obrigatórios para geração real e OCR. O modo 
 
 ## Instalação
 
-No PowerShell, na raiz do projeto:
+No Windows, com o Python 3.12 ou superior instalado, dê dois cliques em **Instalar.bat** na raiz do projeto. Ele cria `.venv` se necessário e verifica `requirements.txt` sem consultar o índice de pacotes. Quando tudo já estiver compatível, termina sem download. Se faltar algum pacote ou houver uma versão incompatível, o pip resolve o que precisa ser instalado no ambiente virtual.
+
+O atalho prepara as dependências Python. Python, PostgreSQL, Ollama e Tesseract usam as instalações indicadas nos requisitos. A configuração do banco e dos modelos segue as seções abaixo. Depois de configurar o projeto, use **Iniciar.bat**.
+
+Para instalar manualmente pelo PowerShell, na raiz do projeto:
 
 ```powershell
 python -m venv .venv
