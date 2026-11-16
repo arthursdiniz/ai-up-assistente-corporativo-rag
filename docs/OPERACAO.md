@@ -59,6 +59,8 @@ Após mudanças de modelo/tokenização, faça backup e, com o servidor encerrad
 
 Na biblioteca, Reprocessar atualiza um único arquivo. Uma geração nova de vetores fica pronta antes da troca do ponteiro. Se o reprocessamento falhar, o índice anterior continua disponível; o arquivo nunca é reescrito. Enquanto o documento está processando, ele fica fora de novas consultas.
 
+Para trocar o modelo quando a dimensão dos embeddings muda, faça backup e feche o aplicativo. Aponte `CHROMA_DIR` para uma pasta local nova e execute o mesmo comando de reindexação com `--all`. Mantenha a pasta anterior e a configuração anterior até validar a indexação e algumas consultas com fontes. Uma troca de modelo com a mesma dimensão também exige reindexação para obter resultados comparáveis.
+
 ## Limites e privacidade
 
 Máximo padrão: 20 MB por arquivo, 500 páginas PDF, 2 milhões de caracteres extraídos; XLSX com até 500 mil células na dimensão declarada. Até 50 documentos podem ser escolhidos por conversa. Arquivos idênticos do mesmo dono são rejeitados; uma nova versão de mesmo nome arquiva as anteriores após sucesso.

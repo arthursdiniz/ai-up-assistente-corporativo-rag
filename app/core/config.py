@@ -91,8 +91,13 @@ class Settings(BaseSettings):
             raise ValueError("TESSERACT_DATA_DIR deve ser um diretório sem aspas duplas ou quebras de linha.")
         if self.llm_provider == "ollama":
             ollama = urlsplit(self.ollama_base_url)
+            try:
+                port = ollama.port
+            except ValueError:
+                raise ValueError("OLLAMA_BASE_URL deve indicar uma porta TCP válida.") from None
             if (ollama.scheme not in {"http", "https"} or ollama.hostname not in {"localhost", "127.0.0.1", "::1"}
-                    or ollama.username is not None or is_cloud_model(self.ollama_model)):
+                    or port == 0 or ollama.username is not None or ollama.query or ollama.fragment
+                    or is_cloud_model(self.ollama_model)):
                 raise ValueError("O modo privado exige Ollama local e um modelo sem encaminhamento para a nuvem.")
         if self.chunk_token_overlap >= self.chunk_token_limit:
             raise ValueError("CHUNK_TOKEN_OVERLAP deve ser menor que CHUNK_TOKEN_LIMIT.")

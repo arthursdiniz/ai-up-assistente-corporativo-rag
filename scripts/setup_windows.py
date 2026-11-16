@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import secrets
 import shutil
+import sqlite3
 import sys
 from tempfile import TemporaryDirectory
 
@@ -16,10 +17,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.core.windows_setup import installation_dir
-from scripts import run_local
 from scripts.windows_bootstrap import (SetupError, command, consent, download, install_vendor, log,
-                                       require_space, say, secure_directory, setup_lock, write_text)
+                                       file_sha256, reject_link, require_space, say, secure_directory, setup_lock, write_text)
 from scripts.windows_postgres import prepare_database
+
+try:
+    from scripts import run_local
+except ImportError:
+    if __name__ == "__main__":
+        raise SystemExit("Uma biblioteca Python essencial não pôde carregar. Repare o ambiente com Instalar.bat. Se persistir, confira o runtime Visual C++ e renomeie .venv antes de tentar novamente.") from None
+    raise
 
 
 EXAMPLE_DATABASE = "postgresql+psycopg://postgres:postgres@localhost:5432/ai_up"
@@ -46,6 +53,7 @@ def vc_runtime_available():
 def read_env(path):
     from dotenv import dotenv_values
 
+    reject_link(path)
     return {key.upper(): value for key, value in dotenv_values(path, interpolate=False).items() if value is not None}
 
 
@@ -102,12 +110,13 @@ def prepare_config(home):
         # An explicit later configuration may intentionally point to another server.
         # Start our cluster only when it is the effective database.
         if get_settings().database_url == private.get("DATABASE_URL"):
-            private["DATABASE_URL"] = prepare_database(home)
+            private["DATABASE_URL"] = prepare_database(home, allow_port_change=False)
     if explicit.get("DATABASE_URL") == EXAMPLE_DATABASE and not (explicit.get("DATABASE_PASSWORD") or os.environ.get("DATABASE_URL")):
         raise SetupError("O .env existente ainda aponta para a configuração de exemplo. Restaure as credenciais reais ou use uma cópia limpa do ZIP.")
     secret = explicit.get("SECRET_KEY", "")
     if len(secret) < 32 or secret.startswith("SUBSTITUIR"):
-        private.setdefault("SECRET_KEY", secrets.token_urlsafe(48))
+        if len(private.get("SECRET_KEY", "")) < 32 or private["SECRET_KEY"].startswith("SUBSTITUIR"):
+            private["SECRET_KEY"] = secrets.token_urlsafe(48)
         # Repair an explicitly empty/template key at runtime without rewriting an existing .env.
         os.environ["SECRET_KEY"] = private["SECRET_KEY"]
     if previous != private or not private_path.exists():
@@ -134,16 +143,16 @@ def ensure_model(settings, home):
     if not MODEL_NAME.fullmatch(model) or is_cloud_model(model) or any(part in {"", ".", ".."} for part in model.split("/")):
         raise SetupError("Nome do modelo Ollama inválido ou não local. Confira OLLAMA_MODEL.")
     base = settings.ollama_base_url.rstrip("/")
-    default_address = base in {"http://localhost:11434", "http://127.0.0.1:11434"}
-    if default_address and run_local.ollama_models(base) is None and not run_local.ollama_executable():
+    cli_host = run_local.ollama_cli_host(base)
+    if cli_host and run_local.ollama_models(base) is None and not run_local.ollama_executable():
         install_vendor("Ollama", "Ollama.Ollama", "https://ollama.com/download/windows", home, OLLAMA_INSTALLER,
                        installed=run_local.ollama_executable)
     models = run_local.ensure_ollama(settings, start_local=True, require_model=False)
     if model in models or f"{model}:latest" in models:
         say(f"Ollama: modelo local {model} disponível.")
-        return
+        return models.get(model) or models.get(f"{model}:latest")
     executable = run_local.ollama_executable()
-    if not default_address or not executable:
+    if not cli_host or not executable:
         raise SetupError(f"Modelo ausente no Ollama configurado. Baixe {model} na instância local correspondente.")
     estimate = " (~2,5 GB para o modelo padrão; outros modelos variam)"
     if not consent(f"Baixar o modelo local {model}{estimate}?"):
@@ -151,12 +160,12 @@ def ensure_model(settings, home):
     model_home = Path(os.environ.get("OLLAMA_MODELS") or (Path.home() / ".ollama" / "models"))
     drive = next(path for path in (model_home, *model_home.parents) if path.exists())
     require_space(drive, 4)
-    env = {**os.environ, "OLLAMA_HOST": "127.0.0.1:11434"}
-    import subprocess
-    result = subprocess.run([executable, "pull", model], env=env)
+    env = {**os.environ, "OLLAMA_HOST": cli_host}
+    result = command([executable, "pull", model], env=env, live=True, timeout=None)
     if result.returncode:
         raise SetupError("Falha ao baixar o modelo Ollama. Confira rede e espaço e tente novamente.")
-    run_local.ensure_ollama(settings, start_local=False)
+    models = run_local.ensure_ollama(settings, start_local=False)
+    return models.get(model) or models.get(f"{model}:latest")
 
 
 def find_tesseract(configured):
@@ -187,12 +196,19 @@ def ensure_ocr(settings, home, private):
     directory = settings.tesseract_data_dir
     args = [executable, "--list-langs"] + (["--tessdata-dir", directory] if directory else [])
     langs = command(args)
-    if langs.returncode or "por" not in langs.stdout.split():
-        if directory and directory != str(home / "tessdata"):
+    managed = home / "tessdata"
+    managed_language = directory and Path(directory) == managed
+    if managed_language:
+        reject_link(managed)
+        reject_link(managed / "por.traineddata")
+    if managed_language or langs.returncode or "por" not in langs.stdout.split():
+        if directory and not managed_language:
             raise SetupError("O diretório TESSERACT_DATA_DIR configurado não contém o idioma por.")
-        directory = str(home / "tessdata")
-        target = Path(directory) / "por.traineddata"
-        if not target.is_file():
+        directory = str(managed)
+        target = managed / "por.traineddata"
+        reject_link(managed)
+        reject_link(target)
+        if not target.is_file() or file_sha256(target) != POR_SHA256:
             if not consent("Baixar os dados oficiais de OCR em português (~2 MB)?"):
                 raise SetupError("O modo completo exige OCR em português.")
             target.parent.mkdir(exist_ok=True)
@@ -207,55 +223,91 @@ def ensure_ocr(settings, home, private):
     return executable, directory
 
 
-def check_ocr(executable, directory):
+def check_ocr(settings, executable, directory):
     from PIL import Image, ImageDraw, ImageFont
+    from app.services.extraction_service import ExtractionError, ExtractionService
 
     font = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts" / "arial.ttf"
-    with TemporaryDirectory(prefix="aiup-ocr-") as temporary:
-        path = Path(temporary) / "exemplo.png"
-        image = Image.new("RGB", (720, 120), "white")
-        draw = ImageDraw.Draw(image)
-        draw.text((35, 22), "DOCUMENTO TESTE 2026", fill="black", font=ImageFont.truetype(str(font), 42))
-        image.save(path)
-        args = [executable, path, "stdout", "-l", "por", "--psm", "7"]
-        if directory:
-            args += ["--tessdata-dir", directory]
-        result = command(args)
-        if result.returncode or "2026" not in result.stdout:
-            raise SetupError("O idioma português foi listado, mas falhou no teste de leitura de imagem.")
+    try:
+        lettering = ImageFont.truetype(str(font), 42)
+    except OSError:
+        lettering = ImageFont.load_default(size=42)
+    image = Image.new("RGB", (720, 120), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((35, 22), "DOCUMENTO TESTE 2026", fill="black", font=lettering)
+    ocr_settings = settings.model_copy(update={"tesseract_cmd": executable, "tesseract_data_dir": directory})
+    try:
+        recognized = ExtractionService(ocr_settings).read_image_text(image)
+    except ExtractionError as exc:
+        raise SetupError("O idioma português foi listado, mas falhou no teste de leitura de imagem.") from exc
+    if "2026" not in recognized:
+        raise SetupError("O idioma português foi listado, mas falhou no teste de leitura de imagem.")
 
 
-def embedding_cached(model):
+def embedding_signature(model):
     from huggingface_hub import try_to_load_from_cache
 
-    def ready(path):
-        # New and legacy Sentence Transformer repositories use one of these weight names.
-        weights = any(item.is_file() for item in path.glob("*.safetensors")) or (path / "pytorch_model.bin").is_file()
-        tokenizer = any((path / name).is_file() for name in ("tokenizer.json", "vocab.txt", "sentencepiece.bpe.model"))
-        return weights and tokenizer and (path / "config.json").is_file()
+    path = Path(model)
+    if not path.is_dir():
+        config = try_to_load_from_cache(model, "config.json")
+        if not isinstance(config, str):
+            return None
+        path = Path(config).parent
+    weights = [file for file in (*path.glob("*.safetensors"), path / "pytorch_model.bin") if file.is_file()]
+    tokens = [path / name for name in ("tokenizer.json", "vocab.txt", "sentencepiece.bpe.model") if (path / name).is_file()]
+    if not weights or not tokens or not (path / "config.json").is_file():
+        return None
+    files = set(weights + tokens + list(path.glob("*.json")) + list(path.glob("*/*.json")))
+    return [str(path.resolve()), [[str(file.relative_to(path)), file.stat().st_size, file.stat().st_mtime_ns]
+                                  for file in sorted(files) if file.is_file()]]
 
-    if Path(model).is_dir():
-        return ready(Path(model))
-    config = try_to_load_from_cache(model, "config.json")
-    return isinstance(config, str) and ready(Path(config).parent)
+
+def verify_data_dirs(settings, full_check):
+    for path in (settings.resolved_upload_dir, settings.resolved_chroma_dir):
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            with TemporaryDirectory(prefix="aiup-write-", dir=path):
+                pass
+        except OSError as exc:
+            raise SetupError(f"Não foi possível gravar em {path}. Confira espaço, permissões e proteção de pastas.") from exc
+    index = settings.resolved_chroma_dir / "chroma.sqlite3"
+    if index.is_file():
+        from contextlib import closing
+
+        try:
+            with closing(sqlite3.connect(index.as_uri() + "?mode=ro", uri=True, timeout=2)) as database:
+                if full_check and database.execute("PRAGMA quick_check(1)").fetchone() != ("ok",):
+                    raise sqlite3.DatabaseError
+                database.execute("PRAGMA schema_version").fetchone()
+        except sqlite3.Error as exc:
+            raise SetupError("O índice ChromaDB está bloqueado ou não passou na verificação. Confira outra instância e recupere um backup se necessário.") from exc
 
 
-def verify_ml(settings, marker, executable, directory, repair):
+def verify_ml(settings, marker, executable, directory, repair, *, ollama_digest=None):
     from importlib.metadata import version
     from app.services.embedding_service import EmbeddingService
 
-    for path in (settings.resolved_upload_dir, settings.resolved_chroma_dir):
-        path.mkdir(parents=True, exist_ok=True)
-        with TemporaryDirectory(prefix="aiup-write-", dir=path):
-            pass
-    embedding_ready = settings.embedding_provider == "hash" or embedding_cached(settings.embedding_model)
-    expected = {"schema": 1, "python": sys.version, "packages": {name: version(name) for name in
+    say("Verificando permissões dos dados e o índice ChromaDB...")
+    verify_data_dirs(settings, full_check=repair)
+    semantic = settings.embedding_provider != "hash"
+    embedding = embedding_signature(settings.embedding_model) if semantic else None
+    embedding_ready = not semantic or embedding is not None
+    expected = {"schema": 2, "python": sys.version, "packages": {name: version(name) for name in
                 ("chromadb", "torch", "sentence-transformers", "transformers", "Pillow", "psycopg", "fastapi", "uvicorn", "alembic")},
-                "embedding": [settings.embedding_provider, settings.embedding_model],
-                "ollama": [settings.llm_provider, settings.ollama_base_url, settings.ollama_model],
+                "embedding": [settings.embedding_provider, settings.embedding_model, embedding],
+                "ollama": [settings.llm_provider, settings.ollama_base_url, settings.ollama_model, ollama_digest],
                 "ocr": [executable, directory, Path(executable).stat().st_mtime_ns if executable else None]}
-    previous = json.loads(marker.read_text(encoding="utf-8")) if marker.exists() else {}
-    if not repair and embedding_ready and expected == previous:
+    reject_link(marker)
+    try:
+        previous = json.loads(marker.read_text(encoding="utf-8"))
+    except (FileNotFoundError, UnicodeError, json.JSONDecodeError):
+        previous = None
+    if isinstance(previous, dict) and (settings.resolved_chroma_dir / "chroma.sqlite3").is_file():
+        prior_model = previous.get("embedding")
+        if isinstance(prior_model, list) and prior_model[:2] != expected["embedding"][:2]:
+            say("O modelo de embeddings mudou e há um índice existente. Faça backup e reindexe os documentos antes de usar a busca. Consulte docs/OPERACAO.md.")
+    model_identified = settings.llm_provider != "ollama" or bool(ollama_digest)
+    if not repair and embedding_ready and model_identified and expected == previous:
         say("Diagnóstico local já validado para esta configuração.")
         return
     if not embedding_ready:
@@ -268,14 +320,20 @@ def verify_ml(settings, marker, executable, directory, repair):
     import chromadb
     import fastapi, uvicorn, pymupdf, docx, openpyxl, psycopg, torch  # noqa: F401
 
-    vector = EmbeddingService(settings).embed_query("Documento sintético de diagnóstico do AI-Up.")
+    try:
+        vector = EmbeddingService(settings, local_only=embedding_ready).embed_query("Documento sintético de diagnóstico do AI-Up.")
+    except Exception as exc:
+        log.error("Falha de embeddings (%s).", type(exc).__name__)
+        if embedding_ready:
+            raise SetupError("O modelo de embeddings no cache não pôde ser carregado. Confira a memória e repare apenas o cache do modelo antes de tentar novamente.") from exc
+        raise SetupError("Falha ao baixar ou carregar os embeddings. Confira rede, espaço e memória e reabra o instalador.") from exc
     # Ephemeral client avoids touching the index of existing users or holding temporary files on Windows.
     store = chromadb.EphemeralClient().create_collection("install_" + secrets.token_hex(8))
     store.add(ids=["check"], embeddings=[vector])
     if store.query(query_embeddings=[vector], n_results=1)["ids"] != [["check"]]:
         raise SetupError("O teste de gravação e leitura no ChromaDB falhou.")
     if executable:
-        check_ocr(executable, directory)
+        check_ocr(settings, executable, directory)
     if settings.llm_provider == "ollama":
         import httpx
         say("Testando uma geração curta no Ollama local...")
@@ -288,6 +346,8 @@ def verify_ml(settings, marker, executable, directory, repair):
                 raise ValueError("empty")
         except (httpx.HTTPError, ValueError, AttributeError) as exc:
             raise SetupError("O modelo está instalado, mas a geração de teste falhou. Confira a memória e o diagnóstico do Ollama.") from exc
+    if semantic and not embedding_ready:
+        expected["embedding"][-1] = embedding_signature(settings.embedding_model)
     write_text(marker, json.dumps(expected), replace=marker.exists())
     say("Diagnósticos dos componentes concluídos.")
 
@@ -306,12 +366,14 @@ def main():
     if args.start and not args.demo and run_local.reuse_running_server():
         return
     secure_directory(home)
-    handler = logging.FileHandler(home / "setup.log", encoding="utf-8")
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    log.addHandler(handler)
-    log.setLevel(logging.INFO)
-    log.propagate = False
     with setup_lock(home / "setup.lock"):
+        for name in ("setup.log", "postgresql.log", "settings.env", "database.json", "diagnostics.json"):
+            reject_link(home / name)
+        handler = logging.FileHandler(home / "setup.log", encoding="utf-8")
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        log.addHandler(handler)
+        log.setLevel(logging.INFO)
+        log.propagate = False
         say("Preparando o AI-Up para Windows...")
         print(f"Log da instalação: {home / 'setup.log'}", flush=True)
         if not vc_runtime_available():
@@ -326,7 +388,7 @@ def main():
             raise SetupError("O instalador completo exige uma configuração PostgreSQL.")
         say("Validando a conexão PostgreSQL e as migrations...")
         run_local.main(["--migrate-only", *(["--demo"] if args.demo else [])])
-        ensure_model(settings, home)
+        ollama_digest = ensure_model(settings, home)
         executable, directory = None, None
         if settings.llm_provider == "ollama" or settings.embedding_provider != "hash":
             executable, directory = ensure_ocr(settings, home, private)
@@ -336,7 +398,7 @@ def main():
                 os.environ["TESSERACT_CMD"] = executable
             if directory and not settings.tesseract_data_dir:
                 os.environ["TESSERACT_DATA_DIR"] = directory
-        verify_ml(settings, home / "diagnostics.json", executable, directory, repair=not args.start)
+        verify_ml(settings, home / "diagnostics.json", executable, directory, repair=not args.start, ollama_digest=ollama_digest)
         say("Instalação pronta.")
     if args.start:
         from app.core.config import get_settings

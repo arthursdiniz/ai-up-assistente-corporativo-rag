@@ -1,7 +1,8 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from alembic.util import CommandError
+from sqlalchemy import engine_from_config, pool, text
 
 from app.core.config import get_settings
 from app.db.base import Base
@@ -38,6 +39,12 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        if connection.dialect.name == "postgresql":
+            locked = connection.scalar(text("SELECT pg_try_advisory_lock(1527451721, 9)"))
+            if not locked:
+                raise CommandError("Outra atualização já está aplicando migrations neste banco.")
+            # Use a session lock so Alembic can still manage its own transaction.
+            connection.commit()
         context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
         with context.begin_transaction():
             context.run_migrations()

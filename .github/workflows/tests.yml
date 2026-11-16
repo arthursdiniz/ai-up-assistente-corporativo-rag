@@ -11,12 +11,16 @@ permissions:
 
 jobs:
   windows-installer:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "${{ matrix.python-version }}"
           cache: pip
       - name: Testar atalhos e PowerShell 5.1 sem instalar programas globais
         shell: powershell

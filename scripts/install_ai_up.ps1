@@ -14,7 +14,7 @@ function Test-PythonVersion([string]$Executable, [string[]]$Prefix, [switch]$Req
         $condition += " and sys.prefix != sys.base_prefix"
     }
     & $Executable @Prefix -I -c "import sys, platform; raise SystemExit(0 if $condition else 1)" *> $null
-    return $LASTEXITCODE -eq 0
+    return $? -and $LASTEXITCODE -eq 0
 }
 
 function Find-BasePython {
@@ -37,6 +37,17 @@ function Find-BasePython {
             # Windows Store aliases can open the Store instead of executing Python.
             if ($candidate.Source -notlike "*\Microsoft\WindowsApps\*" -and (Test-PythonVersion $candidate.Source @())) {
                 return @{ Executable = $candidate.Source; Prefix = @() }
+            }
+        }
+    }
+    foreach ($version in @('3.12', '3.13')) {
+        foreach ($hive in @('HKCU:', 'HKLM:')) {
+            $key = Get-Item -LiteralPath "$hive\Software\Python\PythonCore\$version\InstallPath" -ErrorAction SilentlyContinue
+            if (-not $key) { continue }
+            $candidate = $key.GetValue('ExecutablePath')
+            if (-not $candidate -and $key.GetValue('')) { $candidate = Join-Path ($key.GetValue('')) 'python.exe' }
+            if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Leaf) -and (Test-PythonVersion $candidate @())) {
+                return @{ Executable = $candidate; Prefix = @() }
             }
         }
     }
@@ -70,7 +81,11 @@ function Install-BasePython {
         try {
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             Write-Host 'Baixando Python oficial...'
-            Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $target -TimeoutSec 120
+            try {
+                Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $target -TimeoutSec 120 -MaximumRedirection 0
+            } catch {
+                throw 'Falha ao baixar o Python oficial. Confira internet, proxy e certificados do Windows, ou use o instalador indicado em python.org.'
+            }
             if ((Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash -ne $expected) {
                 throw 'O instalador do Python falhou na verificacao SHA-256 e nao sera executado.'
             }
@@ -87,6 +102,8 @@ function Install-BasePython {
 function Test-Requirements {
     $ErrorActionPreference = "Continue"
     & $python -I -m pip --isolated --disable-pip-version-check install --dry-run --no-index -q -r $requirements *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    & $python -I -m pip --isolated --disable-pip-version-check check *> $null
     return $LASTEXITCODE -eq 0
 }
 
@@ -98,6 +115,9 @@ function Test-Pip {
 
 if ([Environment]::OSVersion.Version.Major -lt 10 -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
     throw 'Este instalador requer Windows 10 ou 11 x64 e PowerShell de 64 bits.'
+}
+if ($projectRoot.StartsWith('\\') -or ([IO.DriveInfo]::new([IO.Path]::GetPathRoot($projectRoot))).DriveType -eq 'Network') {
+    throw 'Extraia o AI-Up em uma pasta gravavel de um disco local. Unidades de rede nao sao suportadas.'
 }
 if (-not (Test-Path -LiteralPath $requirements -PathType Leaf)) {
     throw "requirements.txt nao encontrado. Mantenha o instalador na pasta do projeto."
@@ -159,7 +179,7 @@ try {
             Write-Host "Instalando dependencias faltantes ou incompativeis..."
             & $python -I -m pip --isolated --disable-pip-version-check install -r $requirements
             if ($LASTEXITCODE -ne 0 -or -not (Test-Requirements)) {
-                throw "Nao foi possivel preparar todas as dependencias. Confira as mensagens do pip."
+                throw "Nao foi possivel preparar os pacotes. Confira a rede e as mensagens do pip. Se houver conflitos persistentes, feche o AI-Up e renomeie .venv para .venv.backup-manual antes de tentar novamente."
             }
             Write-Host "Dependencias instaladas com sucesso."
         }
@@ -171,7 +191,7 @@ try {
     $mutex.Dispose()
 }
 if (-not $PackagesOnly) {
-    & $python (Join-Path $PSScriptRoot 'setup_windows.py')
+    & $python -X utf8 -I (Join-Path $PSScriptRoot 'setup_windows.py')
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Write-Host "Para abrir o AI-Up, use Iniciar.bat."
 }

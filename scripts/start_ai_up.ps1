@@ -13,5 +13,5 @@ if (-not (Test-Path -LiteralPath $taskPython)) {
 $taskArguments = @("scripts/run_local.py")
 if ($Desktop) { $taskArguments = @("scripts/setup_windows.py", "--start") }
 if ($Demo) { $taskArguments += "--demo" }
-& $taskPython @taskArguments
+& $taskPython -X utf8 -I @taskArguments
 if ($LASTEXITCODE -ne 0) { throw "O AI-Up nao iniciou. Confira a mensagem acima." }

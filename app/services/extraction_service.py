@@ -1,6 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 import shutil
+import subprocess
 
 import pymupdf
 from docx import Document as DocxDocument
@@ -8,7 +9,6 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 from openpyxl import load_workbook
 from PIL import Image
-import pytesseract
 
 from app.core.config import Settings
 
@@ -21,8 +21,6 @@ class ExtractionService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.warnings: list[str] = []
-        if settings.tesseract_cmd:
-            pytesseract.pytesseract.tesseract_cmd = settings.tesseract_cmd
 
     def extract(self, path: Path, file_type: str) -> list[dict]:
         self.warnings = []
@@ -72,15 +70,35 @@ class ExtractionService:
         return sections
 
     def _ocr_pdf_page(self, page: pymupdf.Page) -> str:
-        self._ensure_tesseract()
         pixmap = page.get_pixmap(matrix=pymupdf.Matrix(2, 2), alpha=False)
         image = Image.open(BytesIO(pixmap.tobytes("png")))
-        return self._ocr(image).strip()
+        return self.read_image_text(image).strip()
 
-    def _ocr(self, image):
-        directory = self.settings.tesseract_data_dir
-        config = f'--tessdata-dir "{directory}"' if directory else ""
-        return pytesseract.image_to_string(image, lang="por", timeout=45, config=config)
+    def read_image_text(self, image: Image.Image) -> str:
+        executable = shutil.which(self.settings.tesseract_cmd or "tesseract")
+        if not executable:
+            raise ExtractionError("Tesseract não encontrado. Instale-o ou confira TESSERACT_CMD no arquivo .env.")
+        if "transparency" in image.info:
+            image = image.convert("RGBA")
+        if "A" in image.getbands():
+            background = Image.new("RGB", image.size, "white")
+            background.paste(image, mask=image.getchannel("A"))
+            image = background
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        args = [executable, "stdin", "stdout", "-l", "por"]
+        if self.settings.tesseract_data_dir:
+            args.extend(["--tessdata-dir", self.settings.tesseract_data_dir])
+        try:
+            result = subprocess.run(args, input=buffer.getvalue(), capture_output=True, timeout=45,
+                                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        except subprocess.TimeoutExpired as exc:
+            raise ExtractionError("O Tesseract excedeu o tempo de leitura desta imagem.") from exc
+        except OSError as exc:
+            raise ExtractionError("Não foi possível executar o Tesseract. Confira a instalação e as permissões.") from exc
+        if result.returncode:
+            raise ExtractionError(f"O Tesseract retornou código {result.returncode}. Confira o idioma por e TESSERACT_DATA_DIR.")
+        return result.stdout.decode("utf-8", errors="replace")
 
     @staticmethod
     def _extract_docx(path: Path) -> list[dict]:
@@ -129,17 +147,6 @@ class ExtractionService:
         return sections
 
     def _extract_image(self, path: Path) -> list[dict]:
-        self._ensure_tesseract()
         with Image.open(path) as image:
-            text = self._ocr(image)
+            text = self.read_image_text(image)
         return [{"text": text, "page": None}]
-
-    def _ensure_tesseract(self) -> None:
-        configured = self.settings.tesseract_cmd
-        if configured and Path(configured).is_file():
-            return
-        if shutil.which("tesseract"):
-            return
-        raise ExtractionError(
-            "Tesseract não encontrado. Instale-o ou configure TESSERACT_CMD no arquivo .env."
-        )

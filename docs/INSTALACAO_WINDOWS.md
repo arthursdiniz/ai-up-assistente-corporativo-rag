@@ -16,7 +16,10 @@ Reserve **10–15 GB** para instalar e espaço adicional para documentos e índi
 ## Diagnóstico, atualização e remoção
 
 - Reabra o atalho após corrigir falhas de internet, espaço ou permissões. O assistente reaproveita etapas concluídas. Se um instalador pedir reinício ou sofrer bloqueio do Windows, confira a mensagem do fornecedor antes de retomar.
+- Para uma pasta no OneDrive, mantenha o ZIP extraído disponível localmente. Se houver problemas com sincronização ou proteção de pastas, teste uma pasta local NTFS gravável. O instalador recusa caminhos de rede e unidades de rede mapeadas.
 - Se você configurou um PostgreSQL externo ao instalador, inicie seu serviço habitual quando ele estiver parado. O atalho inicia automaticamente apenas o cluster privado que gerencia. Se o `.env` estiver perdido e existirem uploads ou índice, recupere as credenciais ou o `.env` original antes de continuar.
+- Se uma porta do banco privado estiver ocupada e o cluster estiver parado, o atalho pode escolher outra porta da faixa privada e reaproveitar o mesmo banco. Conexões configuradas explicitamente exigem liberar a porta ou revisar a configuração. Se `database.json` estiver ilegível, restaure a cópia correspondente antes de prosseguir.
+- O atalho verifica se as pastas de dados são graváveis e se o índice ChromaDB pode ser lido. Em caso de índice bloqueado, feche as outras instâncias. Em caso de modelo trocado ou de índice corrompido, faça backup e siga o [guia de operação e reindexação](OPERACAO.md).
 - Confira `setup.log` e `postgresql.log` na subpasta correspondente em `%LOCALAPPDATA%\AI-Up\installations`. O primeiro registra etapas e códigos sem registrar credenciais. Falhas anteriores à preparação do perfil aparecem no terminal. Não publique `settings.env` ou `database.json`.
 - Use o mesmo caminho do checkout ao atualizar. A pasta privada é identificada pelo caminho da instalação. Faça backup do banco, dos uploads, do ChromaDB e da configuração privada antes de mover ou remover a pasta. Encerre o aplicativo com `Ctrl+C`. Para parar o cluster privado, use os binários PostgreSQL correspondentes com `pg_ctl stop -D <pasta-privada>\cluster -m fast -w`. O atalho não registra serviço global e não remove dados ou componentes compartilhados automaticamente.
 - Para congelar a distribuição, gere um `requirements-win-x64-py312.lock` com versões transitivas e hashes em uma VM limpa. Valide com `pip install --require-hashes -r requirements-win-x64-py312.lock` e rode a suíte antes de distribuir. O assistente usa as faixas atuais de `requirements.txt` até existir um lock validado nesse ambiente.
@@ -30,5 +33,7 @@ Reserve **10–15 GB** para instalar e espaço adicional para documentos e índi
 5. Em uma segunda VM com banco existente de teste, compare inventários de contas, arquivos e índice antes e depois da atualização. Confira a reutilização do `.env` e das credenciais existentes.
 
 O teste automatizado usa executáveis simulados para instalação de terceiros. Os prompts reais de UAC/licenças e a instalação integral do ZIP em VM são verificações manuais.
+
+Resultados, limitações e matriz de testes na [auditoria do instalador](AUDITORIA_INSTALACAO_WINDOWS.md).
 
 Referências oficiais: [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/install), [PostgreSQL para Windows](https://www.postgresql.org/download/windows/), [checksum EDB](https://get.enterprisedb.com/postgresql/postgresql-18.7-1-windows-x64-binaries.zip.sha256), [modelo Qwen](https://ollama.com/library/qwen3:4b-instruct) e [Tesseract para Windows](https://github.com/UB-Mannheim/tesseract/wiki).

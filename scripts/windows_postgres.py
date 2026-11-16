@@ -1,14 +1,17 @@
 """Private PostgreSQL cluster for fresh Windows installations."""
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
+import re
 import secrets
 import shutil
 import socket
+import stat
 from tempfile import mkdtemp
 from zipfile import ZipFile
 
-from scripts.windows_bootstrap import SetupError, command, consent, download, require_space, say, write_text
+from scripts.windows_bootstrap import (SetupError, command, consent, download, file_sha256,
+                                       reject_link, require_space, say, write_text)
 
 
 PG_URL = "https://get.enterprisedb.com/postgresql/postgresql-18.7-1-windows-x64-binaries.zip"
@@ -17,6 +20,9 @@ APP_USER = "aiup_app"
 ADMIN_USER = "aiup_bootstrap"
 DB_NAME = "ai_up"
 PG_TOOLS = ("postgres.exe", "initdb.exe", "pg_ctl.exe")
+PRIVATE_PORTS = range(55432, 55452)
+TOKEN = re.compile(r"[A-Za-z0-9_-]{40,100}\Z")
+DEVICES = re.compile(r"(?i)(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)")
 
 
 def discover_bin(home):
@@ -32,41 +38,65 @@ def discover_bin(home):
 
 
 def install_portable(home):
-    if not consent("Baixar PostgreSQL 18.7 oficial da EDB (~390 MB) e preparar um cluster privado, sem instalar um serviço global?"):
-        raise SetupError("PostgreSQL é obrigatório. Instale os binários oficiais ou configure um servidor existente.")
     require_space(home, 3)
-    stage = Path(mkdtemp(prefix="postgresql-install-", dir=home))
-    archive = stage / "postgresql.zip"
-    say("Baixando e verificando o arquivo PostgreSQL da EDB...")
-    try:
+    archive = home / "postgresql-18.7.zip"
+    reject_link(archive)
+    if not archive.is_file() or file_sha256(archive) != PG_SHA256:
+        if not consent("Baixar PostgreSQL 18.7 oficial da EDB (~390 MB) e preparar um cluster privado, sem instalar um serviço global?"):
+            raise SetupError("PostgreSQL é obrigatório. Instale os binários oficiais ou configure um servidor existente.")
+        say("Baixando e verificando o arquivo PostgreSQL da EDB...")
         download(PG_URL, PG_SHA256, archive, 420 * 1024**2)
+    stage = Path(mkdtemp(prefix="postgresql-install-", dir=home))
+    try:
         with ZipFile(archive) as package:
-            # Keep server, tools and libraries, excluding optional pgAdmin/StackBuilder assets.
-            for item in package.infolist():
-                parts = PurePosixPath(item.filename).parts
-                if len(parts) < 2 or parts[0] != "pgsql" or parts[1] not in {"bin", "lib", "share"}:
-                    continue
-                if any(part == ".." or "\\" in part or ":" in part for part in parts):
-                    raise SetupError("O pacote PostgreSQL contém um caminho inesperado.")
-                package.extract(item, stage)
+            package.extractall(stage, members=portable_members(package))
         directory = stage / "pgsql"
         if not all((directory / "bin" / name).is_file() for name in PG_TOOLS):
             raise SetupError("O pacote PostgreSQL não contém todos os executáveis necessários.")
         directory.rename(home / "postgresql")
+        archive.unlink(missing_ok=True)
         return home / "postgresql" / "bin"
     finally:
         shutil.rmtree(stage, ignore_errors=True)
 
 
-def choose_port():
-    for port in range(55432, 55452):
-        with socket.socket() as probe:
+def portable_members(package):
+    members = []
+    names = set()
+    total = 0
+    for item in package.infolist():
+        # Inspect the original name, including embedded NUL, before zipfile normalizes it.
+        parts = item.orig_filename.rstrip("/").split("/")
+        if len(parts) < 2 or parts[0] != "pgsql" or parts[1] not in {"bin", "lib", "share"}:
+            continue
+        key = "/".join(parts).casefold()
+        if (key in names or stat.S_ISLNK(item.external_attr >> 16)
+                or any(not part or part.endswith((".", " ")) or DEVICES.match(part)
+                       or any(ord(char) < 32 or char in '<>:"\\|?*' for char in part) for part in parts)):
+            raise SetupError("O pacote PostgreSQL contém um caminho inesperado.")
+        names.add(key)
+        total += item.file_size
+        if total > 2 * 1024**3:
+            raise SetupError("O pacote PostgreSQL ultrapassa o tamanho esperado após extração.")
+        members.append(item)
+    return members
+
+
+def port_available(port):
+    with socket.socket() as probe:
+        if os.name == "nt":
             probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
-            try:
-                probe.bind(("127.0.0.1", port))
-                return port
-            except OSError:
-                continue
+        try:
+            probe.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def choose_port(excluding=None):
+    for port in PRIVATE_PORTS:
+        if port != excluding and port_available(port):
+            return port
     raise SetupError("Nenhuma porta local livre para o PostgreSQL privado (55432 a 55451).")
 
 
@@ -85,10 +115,15 @@ def initialize(bin_dir, cluster, password):
         shutil.rmtree(stage, ignore_errors=True)
 
 
+def status(bin_dir, cluster):
+    code = command([bin_dir / "pg_ctl.exe", "status", "-D", cluster]).returncode
+    if code not in (0, 3):
+        raise SetupError(f"O pg_ctl não conseguiu consultar o cluster (código {code}). Confira a pasta e suas permissões.")
+    return code == 0
+
+
 def start(bin_dir, cluster, port):
     pg_ctl = bin_dir / "pg_ctl.exe"
-    if command([pg_ctl, "status", "-D", cluster]).returncode == 0:
-        return
     say(f"Iniciando o PostgreSQL privado em 127.0.0.1:{port}...")
     result = command([pg_ctl, "start", "-D", cluster, "-l", cluster.parent / "postgresql.log",
                       "-o", f"-h 127.0.0.1 -p {port}", "-w", "-t", "45"], timeout=55, quiet=True)
@@ -114,13 +149,30 @@ def provision_role(cluster, port, state):
             connection.execute(sql.SQL("CREATE DATABASE {} OWNER {}").format(sql.Identifier(DB_NAME), sql.Identifier(APP_USER)))
 
 
-def prepare_database(home):
+def read_state(path):
+    reject_link(path)
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+        if (not isinstance(state, dict) or not isinstance(state.get("bin"), str)
+                or not Path(state["bin"]).is_absolute() or type(state.get("port")) is not int
+                or state["port"] not in PRIVATE_PORTS
+                or any(not isinstance(state.get(key), str) or not TOKEN.fullmatch(state[key])
+                       for key in ("password", "admin") if key != "admin" or key in state)):
+            raise ValueError
+    except (OSError, ValueError) as exc:
+        raise SetupError("O registro database.json do PostgreSQL privado está ilegível. Restaure uma cópia dessa configuração.") from exc
+    return state
+
+
+def prepare_database(home, *, allow_port_change=True):
     import psycopg
 
     cluster = home / "cluster"
     state_file = home / "database.json"
+    reject_link(cluster)
+    reject_link(state_file)
     if state_file.exists():
-        state = json.loads(state_file.read_text(encoding="utf-8"))
+        state = read_state(state_file)
         bin_dir = Path(state["bin"])
         if not all((bin_dir / name).is_file() for name in PG_TOOLS):
             raise SetupError("Os binários do PostgreSQL privado não estão disponíveis. Reponha a mesma versão; o cluster foi preservado.")
@@ -131,12 +183,20 @@ def prepare_database(home):
         state = {"bin": str(bin_dir), "port": choose_port(), "admin": secrets.token_urlsafe(36),
                  "password": secrets.token_urlsafe(36)}
         write_text(state_file, json.dumps(state))
-    port = state["port"]
     if not (cluster / "PG_VERSION").is_file():
         if cluster.exists() or "admin" not in state:
             raise SetupError("O cluster PostgreSQL está incompleto ou ausente. Restaure uma cópia antes de continuar.")
         initialize(bin_dir, cluster, state["admin"])
-    start(bin_dir, cluster, port)
+    port = state["port"]
+    if not status(bin_dir, cluster):
+        if not port_available(port):
+            if not allow_port_change:
+                raise SetupError(f"A porta {port} do banco está ocupada. Libere a porta ou revise a conexão configurada.")
+            port = choose_port(excluding=port)
+            state["port"] = port
+            write_text(state_file, json.dumps(state), replace=True)
+            say(f"Porta anterior ocupada. O PostgreSQL privado usará a porta {port} com o mesmo cluster.")
+        start(bin_dir, cluster, port)
     credentials = dict(host="127.0.0.1", port=port, user=APP_USER, password=state["password"], dbname=DB_NAME)
     try:
         if "admin" in state:

@@ -14,12 +14,14 @@ class EmbeddingProvider(ABC):
 
 
 class SentenceTransformerEmbeddingProvider(EmbeddingProvider):
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, local_only: bool = False) -> None:
         from sentence_transformers import SentenceTransformer
 
         try:
             self.model = SentenceTransformer(model_name, local_files_only=True)
         except OSError:
+            if local_only:
+                raise
             self.model = SentenceTransformer(model_name)
 
     def encode(self, texts: list[str]) -> list[list[float]]:
@@ -79,8 +81,11 @@ def _provider(provider_name: str, model_name: str) -> EmbeddingProvider:
 
 
 class EmbeddingService:
-    def __init__(self, settings: Settings) -> None:
-        self.provider = _provider(settings.embedding_provider, settings.embedding_model)
+    def __init__(self, settings: Settings, *, local_only: bool = False) -> None:
+        if local_only and settings.embedding_provider == "sentence_transformers":
+            self.provider = SentenceTransformerEmbeddingProvider(settings.embedding_model, local_only=True)
+        else:
+            self.provider = _provider(settings.embedding_provider, settings.embedding_model)
 
     @property
     def max_tokens(self) -> int:

@@ -29,7 +29,9 @@ def pg_environment():
     if WINDOWS_INSTALLATION and (url.host, url.username, url.database) == ("127.0.0.1", "aiup_app", "ai_up"):
         state_file = WINDOWS_INSTALLATION / "database.json"
         if state_file.is_file():
-            state = json.loads(state_file.read_text(encoding="utf-8"))
+            from scripts.windows_postgres import read_state
+
+            state = read_state(state_file)
             if url.port == state["port"]:
                 directory = Path(state["bin"])
                 if not (directory / "pg_dump.exe").is_file():
