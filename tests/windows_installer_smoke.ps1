@@ -5,6 +5,7 @@ $sandbox = Join-Path ([IO.Path]::GetTempPath()) ('AI-Up instala' + $accent + 'ao
 $null = New-Item -ItemType Directory -Path (Join-Path $sandbox 'scripts')
 Copy-Item (Join-Path $repo 'scripts\install_ai_up.ps1') (Join-Path $sandbox 'scripts')
 Copy-Item (Join-Path $repo 'Iniciar.bat') $sandbox
+Copy-Item (Join-Path $repo 'Iniciar_Demo.bat') $sandbox
 Copy-Item (Join-Path $repo 'Instalar.bat') $sandbox
 Set-Content -LiteralPath (Join-Path $sandbox 'requirements.txt') -Value '# already satisfied in any environment' -Encoding Ascii
 $null = New-Item -ItemType Directory -Path (Join-Path $sandbox '.venv')
@@ -22,7 +23,9 @@ try {
     $second = cmd.exe /d /c 'Instalar.bat < nul'
     if ($LASTEXITCODE -ne 0 -or ($second -join "`n") -notmatch 'Nenhum download foi feito\.' -or
         ($second -join "`n") -notmatch 'SETUP_STUB \[\]') { throw 'Instalar.bat did not reuse the prepared environment.' }
-    Write-Output 'Windows smoke passed: both BATs, offline repeat, accented path and incomplete venv recovery.'
+    $demo = cmd.exe /d /c 'Iniciar_Demo.bat < nul'
+    if ($LASTEXITCODE -ne 0 -or ($demo -join "`n") -notmatch 'SETUP_STUB.*--start.*--demo') { throw 'Iniciar_Demo.bat did not request demo accounts.' }
+    Write-Output 'Windows smoke passed: three BATs, offline repeat, accented path and incomplete venv recovery.'
 } finally {
     Pop-Location
     # Only the known temporary tree created by this test may be removed.

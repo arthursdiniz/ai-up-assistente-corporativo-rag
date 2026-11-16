@@ -4,7 +4,7 @@ As credenciais abaixo são públicas e destinadas ao uso local com dados de demo
 
 ## AI-Up padrão
 
-Na pasta do projeto, com o AI-Up fechado, abra o PowerShell e execute:
+Em um computador novo, dê dois cliques em **Iniciar_Demo.bat** para criar as contas de teste e abrir o AI-Up. Se a janela do AI-Up já estiver aberta, encerre com `Ctrl+C` antes de usar esse atalho. Se a cópia do projeto for anterior ao atalho, execute na pasta do projeto pelo PowerShell:
 
 ```powershell
 .\scripts\start_ai_up.ps1 -Desktop -Demo
@@ -18,7 +18,7 @@ Abra [localhost:8000](http://localhost:8000/). A senha inicial padrão é `AiUp@
 | Gerente | `gerente@aiup.local` |
 | Administrador | `admin@aiup.local` |
 
-O comando cria as contas de demonstração que estiverem faltando. Contas existentes mantêm suas senhas. Se `SEED_PASSWORD` estiver definida, as novas contas recebem o valor dessa variável.
+O atalho cria as contas de demonstração que estiverem faltando. Contas existentes mantêm suas senhas. Se `SEED_PASSWORD` estiver definida, as novas contas recebem o valor dessa variável. Para usar uma conta própria em um banco novo, abra `Iniciar.bat` e escolha **Configurar primeiro administrador**.
 
 ## AI-Up Auditor
 

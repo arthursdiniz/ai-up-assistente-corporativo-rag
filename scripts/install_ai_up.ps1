@@ -102,7 +102,14 @@ if ([Environment]::OSVersion.Version.Major -lt 10 -or $env:PROCESSOR_ARCHITECTUR
 if (-not (Test-Path -LiteralPath $requirements -PathType Leaf)) {
     throw "requirements.txt nao encontrado. Mantenha o instalador na pasta do projeto."
 }
-$mutex = [Threading.Mutex]::new($false, 'Local\AI-Up-PythonSetup')
+$hasher = [Security.Cryptography.SHA256]::Create()
+try {
+    $rootBytes = [Text.Encoding]::UTF8.GetBytes($projectRoot.ToUpperInvariant())
+    $projectId = [BitConverter]::ToString($hasher.ComputeHash($rootBytes)).Replace('-', '')
+} finally {
+    $hasher.Dispose()
+}
+$mutex = [Threading.Mutex]::new($false, "Local\AI-Up-PythonSetup-$projectId")
 $locked = $false
 try {
     try {
