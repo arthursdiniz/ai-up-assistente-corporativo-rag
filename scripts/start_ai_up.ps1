@@ -1,4 +1,4 @@
-param([switch]$Demo)
+param([switch]$Demo, [switch]$Desktop)
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
@@ -8,5 +8,6 @@ if (-not (Test-Path -LiteralPath $taskPython)) {
 }
 $taskArguments = @("scripts/run_local.py")
 if ($Demo) { $taskArguments += "--demo" }
+if ($Desktop) { $taskArguments += "--desktop" }
 & $taskPython @taskArguments
 if ($LASTEXITCODE -ne 0) { throw "O AI-Up nao iniciou. Confira a mensagem acima." }

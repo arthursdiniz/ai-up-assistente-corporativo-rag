@@ -150,6 +150,8 @@ Quando um PDF tiver menos de 40 caracteres extraíveis em uma página, o AI-Up r
 
 ### Inicialização recomendada no Windows
 
+Na pasta do projeto, dê dois cliques em **Iniciar.bat**. Ele abre a instalação normal do AI-Up no navegador quando o servidor estiver pronto e inicia o Ollama na porta padrão se necessário. Mantenha a janela do terminal aberta enquanto usa o aplicativo. Se o AI-Up já estiver rodando, outro clique apenas abre a página.
+
 O script abaixo importa as variáveis do usuário, verifica PostgreSQL, Ollama e o modelo local, aplica migrations, prepara os usuários e inicia a aplicação:
 
 ```powershell
@@ -349,6 +351,6 @@ Essas escolhas mantêm o sistema simples, gratuito, defensável no TCC e pronto 
 - Empresas, equipes e bases de conhecimento compartilhadas com autorização aplicada também no pipeline RAG.
 - Convites empresariais, ciclo de vida das equipes e transferência de documentos antes da desativação de contas.
 
-Início habitual: .\scripts\start_ai_up.ps1 (abra o Ollama antes). Primeira instalação com contas demo: acrescente -Demo. A senha demo é somente inicial; contas existentes nunca são redefinidas automaticamente.
+Início habitual: dois cliques em `Iniciar.bat`. Para criar contas demo na primeira instalação, use `-Demo` no script PowerShell. A senha demo é somente inicial; contas existentes nunca são redefinidas automaticamente.
 
 Leia docs/OPERACAO.md para recuperação e limites, docs/AVALIACAO_IA.md para os resultados atuais e docs/ROTEIRO_APRESENTACAO.md para a demonstração. O sistema continua local e monoprocesso; o compartilhamento entre equipes ocorre dentro da mesma organização.
