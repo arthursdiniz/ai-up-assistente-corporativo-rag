@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts._environment import load_user_environment
 
 load_user_environment()
-from app.core.config import get_settings
+from app.core.config import WINDOWS_INSTALLATION, get_settings
 from sqlalchemy.engine import make_url
 
 
@@ -25,7 +25,16 @@ def pg_environment():
     env = os.environ.copy()
     env.update(PGHOST=url.host or "localhost", PGPORT=str(url.port or 5432),
                PGUSER=url.username or "postgres", PGPASSWORD=url.password or "")
-    return url, env
+    directory = None
+    if WINDOWS_INSTALLATION and (url.host, url.username, url.database) == ("127.0.0.1", "aiup_app", "ai_up"):
+        state_file = WINDOWS_INSTALLATION / "database.json"
+        if state_file.is_file():
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            if url.port == state["port"]:
+                directory = Path(state["bin"])
+                if not (directory / "pg_dump.exe").is_file():
+                    raise RuntimeError("Reponha os binários do PostgreSQL privado antes de criar o backup.")
+    return url, env, directory
 
 
 def digest(path):
@@ -50,8 +59,9 @@ def create():
             raise RuntimeError("Encerre o AI-Up na porta 8000 antes do backup consistente.")
     directory = settings.resolve_path(Path("data/backups")) / datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     directory.mkdir(parents=True, exist_ok=False)
-    url, env = pg_environment()
-    subprocess.run(["pg_dump", "--format=custom", "--no-owner", "--file", str(directory / "database.dump"), url.database], env=env, check=True)
+    url, env, bin_directory = pg_environment()
+    pg_dump = bin_directory / "pg_dump.exe" if bin_directory else "pg_dump"
+    subprocess.run([pg_dump, "--format=custom", "--no-owner", "--file", str(directory / "database.dump"), url.database], env=env, check=True)
     for name, origin in (("uploads", settings.resolved_upload_dir), ("chroma", settings.resolved_chroma_dir)):
         if origin.exists():
             shutil.copytree(origin, directory / name)
@@ -66,12 +76,16 @@ def restore(directory, database, destination):
     from psycopg import sql
 
     verify(directory)
-    url, env = pg_environment()
+    url, env, bin_directory = pg_environment()
     if not database.startswith("ai_up_restore_") or database == url.database or destination.exists():
         raise RuntimeError("Use um banco novo ai_up_restore_* e uma pasta que ainda não exista.")
     with psycopg.connect(host=env["PGHOST"], port=env["PGPORT"], user=env["PGUSER"], password=env["PGPASSWORD"], dbname="postgres", autocommit=True) as connection:
+        can_create, = connection.execute("SELECT rolcreatedb OR rolsuper FROM pg_roles WHERE rolname = current_user").fetchone()
+        if not can_create:
+            raise RuntimeError("Aponte DATABASE_URL para um servidor de recuperação usando uma conta com CREATEDB.")
         connection.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database)))
-    subprocess.run(["pg_restore", "--exit-on-error", "--no-owner", "--dbname", database, str(directory / "database.dump")], env=env, check=True)
+    pg_restore = bin_directory / "pg_restore.exe" if bin_directory else "pg_restore"
+    subprocess.run([pg_restore, "--exit-on-error", "--no-owner", "--dbname", database, str(directory / "database.dump")], env=env, check=True)
     destination.mkdir(parents=True, exist_ok=False)
     for name in ("uploads", "chroma"):
         if (directory / name).exists():

@@ -30,7 +30,10 @@ def inspect_services(db):
     ocr_ready = False
     if ocr:
         try:
-            result = subprocess.run([ocr, "--list-langs"], capture_output=True, text=True, timeout=5,
+            args = [ocr, "--list-langs"]
+            if settings.tesseract_data_dir:
+                args += ["--tessdata-dir", settings.tesseract_data_dir]
+            result = subprocess.run(args, capture_output=True, text=True, timeout=5,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             ocr_ready = result.returncode == 0 and "por" in result.stdout.split()
         except (OSError, subprocess.TimeoutExpired):

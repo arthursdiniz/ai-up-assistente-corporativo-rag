@@ -63,12 +63,16 @@ def ollama_models(base_url):
         return None
 
 
-def ensure_ollama(settings, start_local):
+def ollama_executable():
+    local = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe"
+    return str(local) if local.is_file() else shutil.which("ollama")
+
+
+def ensure_ollama(settings, start_local, *, require_model=True):
     base_url = settings.ollama_base_url.rstrip("/")
     models = ollama_models(base_url)
     if models is None and start_local and base_url in ("http://localhost:11434", "http://127.0.0.1:11434"):
-        local = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe"
-        executable = str(local) if local.is_file() else shutil.which("ollama")
+        executable = ollama_executable()
         if not executable:
             raise SystemExit("Ollama não encontrado. Instale ou abra o Ollama e tente novamente.")
         print("Iniciando Ollama local...", flush=True)
@@ -85,10 +89,11 @@ def ensure_ollama(settings, start_local):
                 break
             wait.wait(0.5)
     if models is None:
-        raise SystemExit(f"Ollama indisponível em {base_url}. Abra o Ollama e tente novamente.")
+        raise SystemExit("Ollama indisponível no endereço configurado. Abra o Ollama e tente novamente.")
     model = settings.ollama_model
-    if model not in models and f"{model}:latest" not in models:
+    if require_model and model not in models and f"{model}:latest" not in models:
         raise SystemExit(f"Modelo local ausente. Execute: ollama pull {model}")
+    return models
 
 
 def run_server(desktop):
@@ -100,7 +105,15 @@ def run_server(desktop):
     def open_when_ready():
         while not finished.wait(0.15):
             if server.started:
-                open_browser()
+                try:
+                    health = httpx.get(f"{LOCAL_URL}/api/health", timeout=5, trust_env=False)
+                    health.raise_for_status()
+                    if health.json().get("status") == "ok":
+                        open_browser()
+                    else:
+                        print("O AI-Up iniciou, mas o banco está indisponível. Confira o diagnóstico.", flush=True)
+                except (httpx.HTTPError, ValueError):
+                    print(f"Falha ao abrir automaticamente. Verifique {BROWSER_URL}/api/health.", flush=True)
                 return
 
     if desktop:
@@ -113,12 +126,12 @@ def run_server(desktop):
         finished.set()
 
 
-def main():
+def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--demo",action="store_true",help="Cria contas demo ausentes, sem redefinir contas existentes.")
     parser.add_argument("--migrate-only",action="store_true")
     parser.add_argument("--desktop", action="store_true", help="Inicia serviços locais e abre o navegador.")
-    args=parser.parse_args()
+    args=parser.parse_args(argv)
     settings=get_settings()
     if args.desktop and not args.migrate_only and not args.demo and reuse_running_server():
         return

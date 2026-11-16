@@ -30,19 +30,15 @@ O projeto local contém:
 
 ## Requisitos no Windows
 
-- [Git](https://git-scm.com/download/win)
-- Python 3.12 ou superior
-- [PostgreSQL](https://www.postgresql.org/download/windows/)
-- [Ollama](https://ollama.com/download/windows)
-- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) com o idioma português instalado
-
-O Ollama e o Tesseract só são obrigatórios para geração real e OCR. O modo `mock` e documentos digitais TXT/PDF/DOCX/XLSX funcionam sem eles.
+O instalador aceita Windows 10/11 x64 em disco local NTFS. Reserve cerca de 10–15 GB livres para a instalação completa e espaço para seus documentos. Recomenda-se 16 GB de RAM. Na primeira instalação, tenha internet, permissão para gravar no perfil do Windows e acesso a uma pessoa que possa autorizar UAC quando necessário. Git, Node.js e IDE são opcionais para desenvolvimento.
 
 ## Instalação
 
-No Windows, com o Python 3.12 ou superior instalado, dê dois cliques em **Instalar.bat** na raiz do projeto. Ele cria `.venv` se necessário e verifica `requirements.txt` sem consultar o índice de pacotes. Quando tudo já estiver compatível, termina sem download. Se faltar algum pacote ou houver uma versão incompatível, o pip resolve o que precisa ser instalado no ambiente virtual.
+1. Baixe o ZIP e extraia toda a pasta.
+2. Dê dois cliques em **Iniciar.bat**. O assistente reaproveita componentes existentes e pede confirmação antes de instalar programas ou baixar modelos. Mantenha a opção padrão para o modo completo.
+3. Aguarde a abertura de `http://localhost:8000`. Em um banco novo, escolha **Configurar primeiro administrador** e crie sua conta.
 
-O atalho prepara as dependências Python. Python, PostgreSQL, Ollama e Tesseract usam as instalações indicadas nos requisitos. A configuração do banco e dos modelos segue as seções abaixo. Depois de configurar o projeto, use **Iniciar.bat**.
+O assistente prepara Python, PostgreSQL, Ollama, embeddings e OCR em português no modo completo. **Instalar.bat** prepara ou verifica o mesmo ambiente sem abrir a aplicação. Consulte o [guia de instalação, diagnóstico e reparo](docs/INSTALACAO_WINDOWS.md). As instruções abaixo são para configuração manual.
 
 Para instalar manualmente pelo PowerShell, na raiz do projeto:
 
@@ -156,7 +152,7 @@ Quando um PDF tiver menos de 40 caracteres extraíveis em uma página, o AI-Up r
 
 Na pasta do projeto, dê dois cliques em **Iniciar.bat**. Ele abre a instalação normal do AI-Up no navegador quando o servidor estiver pronto e inicia o Ollama na porta padrão se necessário. Mantenha a janela do terminal aberta enquanto usa o aplicativo. Se o AI-Up já estiver rodando, outro clique apenas abre a página.
 
-O script abaixo importa as variáveis do usuário, verifica PostgreSQL, Ollama e o modelo local, aplica migrations, prepara os usuários e inicia a aplicação:
+Em um ambiente já preparado, o script PowerShell abaixo também pode aplicar migrations e iniciar a aplicação. Nesse modo, abra o PostgreSQL e o Ollama antes:
 
 ```powershell
 .\scripts\start_ai_up.ps1

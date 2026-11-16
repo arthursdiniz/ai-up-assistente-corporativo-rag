@@ -2,7 +2,9 @@
 
 ## Iniciar sem redefinir contas
 
-Abra o Ollama. No PowerShell, na raiz do projeto:
+No Windows, use `Iniciar.bat` para preparar e abrir o aplicativo. Para reparar a instalação ou repetir os diagnósticos, use `Instalar.bat`. Consulte o [guia de instalação e recuperação](INSTALACAO_WINDOWS.md).
+
+Para iniciar manualmente com os serviços já disponíveis, abra o PowerShell na raiz do projeto:
 
 ~~~powershell
 .\scripts\start_ai_up.ps1
@@ -44,6 +46,8 @@ Restaure sempre em banco e pasta novos:
 ~~~
 
 O banco ai_up_restore_novo e a pasta não podem existir. A ferramenta não sobrescreve o banco atual. Para usar a cópia, configure DATABASE_URL ou DATABASE_NAME, UPLOAD_DIR e CHROMA_DIR apontando para os novos destinos; aplique migrations antes de iniciar. Mantenha o original até validar contagens e consultas. A migration de evolução não oferece downgrade destrutivo: restaure a cópia separada.
+
+Para uma instalação privada criada pelo atalho, mantenha o PostgreSQL privado em execução durante o backup. A ferramenta usa os binários dessa instalação automaticamente. Para restaurar o dump, aponte `DATABASE_URL` para um servidor de recuperação com uma conta autorizada a criar bancos.
 
 ## Reindexação
 

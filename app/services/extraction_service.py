@@ -75,7 +75,12 @@ class ExtractionService:
         self._ensure_tesseract()
         pixmap = page.get_pixmap(matrix=pymupdf.Matrix(2, 2), alpha=False)
         image = Image.open(BytesIO(pixmap.tobytes("png")))
-        return pytesseract.image_to_string(image, lang="por", timeout=45).strip()
+        return self._ocr(image).strip()
+
+    def _ocr(self, image):
+        directory = self.settings.tesseract_data_dir
+        config = f'--tessdata-dir "{directory}"' if directory else ""
+        return pytesseract.image_to_string(image, lang="por", timeout=45, config=config)
 
     @staticmethod
     def _extract_docx(path: Path) -> list[dict]:
@@ -126,7 +131,7 @@ class ExtractionService:
     def _extract_image(self, path: Path) -> list[dict]:
         self._ensure_tesseract()
         with Image.open(path) as image:
-            text = pytesseract.image_to_string(image, lang="por", timeout=45)
+            text = self._ocr(image)
         return [{"text": text, "page": None}]
 
     def _ensure_tesseract(self) -> None:

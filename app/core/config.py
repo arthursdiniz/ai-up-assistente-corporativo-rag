@@ -8,9 +8,11 @@ from typing import Literal
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
+from app.core.windows_setup import installation_dir
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+WINDOWS_INSTALLATION = installation_dir(PROJECT_ROOT)
 
 
 def is_cloud_model(model: str) -> bool:
@@ -74,9 +76,10 @@ class Settings(BaseSettings):
     embedding_provider: Literal["sentence_transformers", "hash"] = "sentence_transformers"
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     tesseract_cmd: str | None = None
+    tesseract_data_dir: str | None = None
 
     model_config = SettingsConfigDict(
-        env_file=PROJECT_ROOT / ".env",
+        env_file=(WINDOWS_INSTALLATION / "settings.env", PROJECT_ROOT / ".env") if WINDOWS_INSTALLATION else PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -84,6 +87,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_settings(self) -> "Settings":
+        if self.tesseract_data_dir and any(character in self.tesseract_data_dir for character in ('"', '\r', '\n')):
+            raise ValueError("TESSERACT_DATA_DIR deve ser um diretório sem aspas duplas ou quebras de linha.")
         if self.llm_provider == "ollama":
             ollama = urlsplit(self.ollama_base_url)
             if (ollama.scheme not in {"http", "https"} or ollama.hostname not in {"localhost", "127.0.0.1", "::1"}
